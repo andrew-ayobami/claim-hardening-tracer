@@ -1,0 +1,13 @@
+# Real dataset files and anything built from them. Never commit these.
+data/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Local secrets
+.env

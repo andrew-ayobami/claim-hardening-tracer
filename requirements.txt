@@ -1,0 +1,6 @@
+pandas
+rapidfuzz
+sentence-transformers
+numpy
+jinja2
+huggingface_hub
