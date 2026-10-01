@@ -1,6 +1,6 @@
-pandas
-rapidfuzz
-sentence-transformers
-numpy
-jinja2
-huggingface_hub
+pandas==3.0.6
+rapidfuzz==3.14.6
+sentence-transformers==6.1.0
+numpy==2.5.3
+jinja2==3.1.6
+huggingface_hub==1.33.0
