@@ -3,6 +3,7 @@ data/
 
 # Embedding indexes, rebuilt with: python trace.py index
 *.index.npz
+*.index.partial/
 
 # Python
 .venv/

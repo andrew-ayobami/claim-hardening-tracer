@@ -1,5 +1,6 @@
 {
   "dataset": "AI Village",
+  "records": "data/records.jsonl",
   "goal": "Adopt a park and get it cleaned!",
   "load": "python -m loaders.ai_village --goal \"Adopt a park\"",
   "note": "Record ids are the first 8 characters of ids in data/records.jsonl. Claims are paraphrased; no dataset text is stored here.",
