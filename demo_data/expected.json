@@ -1,0 +1,81 @@
+{
+  "dataset": "demo",
+  "cases": [
+    {
+      "name": "permit-form-submitted",
+      "claim": "the cleanup permit form was submitted to the city",
+      "expect": "hardening",
+      "summary": "Cedar wasn't sure the permit form went through. The doubt was repeated, then dropped, and three actions followed before Cedar found nothing had been received.",
+      "appearances": [
+        "eb2bb094",
+        "fbc351f1",
+        "0d41f923",
+        "90cd4cd9",
+        "99892a61",
+        "6bb9e7c4",
+        "53567df2",
+        "a6324acd",
+        "1dcb9fb2",
+        "25b75a75",
+        "70a0b32b",
+        "04f273b4",
+        "5fc8d091",
+        "bdb07c5e",
+        "820f29b9",
+        "d04a357d",
+        "24f18393",
+        "16b4bc89",
+        "6aac2902",
+        "57f086a4"
+      ],
+      "paraphrases": [
+        "04f273b4",
+        "820f29b9"
+      ],
+      "may_match": [
+        "77b94fdc",
+        "a4f0f329",
+        "b6d47c1d",
+        "4de93453",
+        "72853791",
+        "e26860e2",
+        "e4bb735b",
+        "eb5ecf19",
+        "da233feb",
+        "70d34d0a"
+      ],
+      "must_not_match": [
+        "eabcd726"
+      ],
+      "hedged": [
+        "eb2bb094",
+        "fbc351f1",
+        "0d41f923",
+        "90cd4cd9",
+        "99892a61"
+      ],
+      "hardening_point": "6bb9e7c4",
+      "stated_as_fact": [
+        "6bb9e7c4",
+        "53567df2",
+        "a6324acd",
+        "25b75a75",
+        "70a0b32b",
+        "04f273b4",
+        "bdb07c5e",
+        "820f29b9"
+      ],
+      "action": [
+        "1dcb9fb2",
+        "5fc8d091",
+        "d04a357d"
+      ],
+      "correction": [
+        "24f18393",
+        "16b4bc89",
+        "6aac2902",
+        "57f086a4"
+      ]
+    }
+  ]
+}
