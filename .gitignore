@@ -1,6 +1,9 @@
 # Real dataset files and anything built from them. Never commit these.
 data/
 
+# Embedding indexes, rebuilt with: python trace.py index
+*.index.npz
+
 # Python
 .venv/
 __pycache__/
