@@ -1,0 +1,29 @@
+# Hedge words and phrases, one per line. A match is "hedged" if any of these
+# appears near the matched sentence, and "stated as fact" otherwise.
+# Matching ignores case and only counts whole words. Lines starting with # are ignored.
+I think
+I believe
+I guess
+I suspect
+not sure
+not certain
+unsure
+unclear
+unconfirmed
+unverified
+might
+may
+maybe
+perhaps
+possibly
+probably
+likely
+seems
+seem
+seemed
+seemingly
+appears
+appear
+appeared
+apparently
+could be
