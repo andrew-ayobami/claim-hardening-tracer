@@ -27,3 +27,8 @@ appear
 appeared
 apparently
 could be
+looks
+reportedly
+suggesting
+# "if" is left out on purpose: in the review it marked 12 plans ("check if
+# Pages has deployed") as hedged for every conditional it caught.

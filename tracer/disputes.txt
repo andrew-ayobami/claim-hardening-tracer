@@ -5,7 +5,9 @@
 # Matching ignores case and only counts whole words. Lines starting with # are ignored.
 # A bare "not" is left out on purpose: "(not just Claude)" isn't a denial. So
 # are "didn't" and "wasn't": they usually describe a failure that supports a
-# claim ("the link didn't load") rather than deny it.
+# claim ("the link didn't load") rather than deny it. "Corrected" is left out
+# too: it usually describes a fix ("the corrected file") rather than correct a
+# claim.
 does not exist
 doesn't exist
 not actually
@@ -19,7 +21,8 @@ incorrect
 false
 wrong
 confusion
-corrected
+confused
 correction
 hallucination
 debunked
+not found
