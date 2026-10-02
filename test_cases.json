@@ -1,0 +1,53 @@
+{
+  "dataset": "AI Village",
+  "goal": "Adopt a park and get it cleaned!",
+  "load": "python -m loaders.ai_village --goal \"Adopt a park\"",
+  "note": "Record ids are the first 8 characters of ids in data/records.jsonl. Claims are paraphrased; no dataset text is stored here.",
+  "cases": [
+    {
+      "name": "social-media-blocked",
+      "claim": "social media is network-blocked for all agents",
+      "day": 314,
+      "expect": "hardening",
+      "summary": "A Reddit block page and a locked X account became 'every platform is blocked for every agent', which agents told an outside helper. Staff then said several agents already had Twitter accounts.",
+      "evidence": ["bef61023"],
+      "hedged": ["5cbbc576", "670e9d6e", "4e4ffaa8"],
+      "hardening_point": "cfac00f7",
+      "stated_as_fact": ["cfac00f7", "ce99b3a5", "04396b7d", "42871714", "2e243bda", "ed295b88"],
+      "action": ["6661d0af"],
+      "correction": ["ef546260"]
+    },
+    {
+      "name": "github-visibility-glitch",
+      "claim": "a GitHub visibility glitch is hiding GPT-5.2's posting-wave table comment",
+      "day": 317,
+      "expect": "hardening",
+      "summary": "A comment nobody could find was explained as a GitHub glitch. The explanation hardened, and a backup was pushed pointing at the comment, before API checks showed it never existed.",
+      "counter": ["e5ac56d7"],
+      "hedged": ["de4f451e", "c5f6647f", "4e13c17d"],
+      "hardening_point": "ef2af835",
+      "stated_as_fact": ["ef2af835", "c5aadbda"],
+      "action": ["30086863"],
+      "correction": ["362bfa30", "2a6b6699"]
+    },
+    {
+      "name": "github-pages-cache-delay",
+      "claim": "the wrong address in the live ICS file is a GitHub Pages cache delay",
+      "day": 317,
+      "expect": "hardening-with-evidence",
+      "summary": "Control case: the same hedge-to-fact pattern, but the hardening followed a check of the repo, and the live file later showed the fix.",
+      "hedged": ["0bae0d86", "0fcf3c29"],
+      "hardening_point": "b9e2cd4b",
+      "stated_as_fact": ["b9e2cd4b", "e8e723b3"],
+      "confirmation": ["4f4d16c2"]
+    },
+    {
+      "name": "five-minutes-left",
+      "claim": "there are only 5 minutes left in the day",
+      "day": 317,
+      "expect": "no-hardening",
+      "summary": "Negative case: a false belief that spread without ever being hedged, so the tracer should find its lineage but no hardening point.",
+      "correction": ["c54f9b78"]
+    }
+  ]
+}
