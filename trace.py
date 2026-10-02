@@ -2,47 +2,63 @@
 
 Usage:
     python trace.py index [RECORDS]          embed the records once and save the vectors
-    python trace.py trace "claim" [--records RECORDS]
-                                             trace a claim and find where it hardened into fact
+    python trace.py trace "claim" [--records RECORDS] [--day N | --since T --until T]
+                                             trace a claim, find where it hardened into fact,
+                                             and write reports/<claim>.html
     python trace.py check [KEY ...]          score the tracer against hand-labelled answer keys
 
 RECORDS defaults to data/records.jsonl, which the AI Village loader writes.
 Use demo_data/records.jsonl to try it on the demo dataset. KEY defaults to
 demo_data/expected.json; test_cases.json holds the real cases.
 
---scope sets how much text around a match is checked for hedge words:
-sentence, neighbours (one sentence either side, the default) or line.
+--day limits the search to one AI Village day; --since and --until take ISO
+times in UTC (2026-02-09 or 2026-02-09T20:00). --scope sets how much text
+around a match is checked for hedge words: sentence, neighbours (one sentence
+either side) or line (the default).
 """
 
 import argparse
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_RECORDS = ROOT / "data" / "records.jsonl"
 DEFAULT_KEY = ROOT / "demo_data" / "expected.json"
 SCOPES = ("sentence", "neighbours", "line")
+MARKS = {"hedged": "?", "disputed": "x", "question": "q", "fact": " "}
 
 
-def print_trace(claim, records_path, scope):
+def utc_time(text):
+    t = datetime.fromisoformat(text)
+    return t if t.tzinfo else t.replace(tzinfo=timezone.utc)
+
+
+def print_trace(claim, records_path, scope, day=None, since=None, until=None):
     from tracer.evaluate import one_line
     from tracer.harden import harden
-    from tracer.match import Corpus, find_matches
+    from tracer.match import Corpus, day_window, find_matches
+    from tracer.report import write_report
 
-    matches = find_matches(claim, Corpus(records_path))
+    corpus = Corpus(records_path)
+    if day is not None:
+        since, until = day_window(corpus, day)
+    matches = find_matches(claim, corpus, since, until)
     if not matches:
         print(f'No appearances of "{claim}".')
         return
-    result = harden(matches, scope=scope)
+    result = harden(matches, claim, scope=scope)
     point = result["hardening_point"]
 
-    print(f'{len(matches)} appearances of "{claim}" ({sum(m["strong"] for m in matches)} strong)')
-    print("* strong match  K keyword  F fuzzy  E embedding  ? hedged  ! hardening point\n")
+    print(f'{len(matches)} appearances of "{claim}" ({sum(m["core"] for m in matches)} core, '
+          f'{sum(m["strong"] for m in matches)} strong)')
+    print("C core  * strong  K keyword  F fuzzy  E embedding  ? hedged  x disputed  q question  ! hardening point\n")
     for m in matches:
         r = m["record"]
         how = "".join(name[0].upper() for name in m["methods"])
-        mark = "!" if m is point else "?" if m["stance"] == "hedged" else " "
-        print(f"{'*' if m['strong'] else ' '}{mark} {r['time'][:16].replace('T', ' ')}  {r['id'][:8]}  "
+        tier = "C" if m["core"] else "*" if m["strong"] else " "
+        mark = "!" if m is point else MARKS[m["stance"]]
+        print(f"{tier}{mark} {r['time'][:16].replace('T', ' ')}  {r['id'][:8]}  "
               f"{r['agent'][:22]:22} {r['channel'][:14]:14} {how:3} {m['similarity']:.2f}  {one_line(m['excerpt'], 90)}")
 
     for label, m in (("Origin", result["origin"]), ("Hardening point", point)):
@@ -54,16 +70,18 @@ def print_trace(claim, records_path, scope):
         print(f"  after {len(result['hedged_before'])} hedged appearances ({', '.join(hedges)}), "
               f"then {len(result['actions'])} computer-use sessions acted on it")
     else:
-        print("\nNo hardening point: no strong match stated as fact after a hedged one.")
-
-    from tracer.report import write_report
+        print("\nNo hardening point: no close restatement was stated as fact after a hedged appearance.")
 
     source = Path(records_path).resolve()
     source = source.relative_to(ROOT).as_posix() if source.is_relative_to(ROOT) else source.name
+    if day is not None:
+        source += f", day {day}"
     print(f"\nReport: {write_report(claim, matches, result, source, scope)}")
 
 
 def main():
+    from tracer.harden import SCOPE
+
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
 
@@ -73,11 +91,14 @@ def main():
     trace = commands.add_parser("trace", help="trace a claim and find where it hardened into fact")
     trace.add_argument("claim")
     trace.add_argument("--records", type=Path, default=DEFAULT_RECORDS)
-    trace.add_argument("--scope", choices=SCOPES, default="neighbours")
+    trace.add_argument("--day", type=int, help="limit the search to one AI Village day")
+    trace.add_argument("--since", type=utc_time, help="limit the search to records from this UTC time")
+    trace.add_argument("--until", type=utc_time, help="...and before this UTC time")
+    trace.add_argument("--scope", choices=SCOPES, default=SCOPE)
 
     check = commands.add_parser("check", help="score the tracer against hand-labelled answer keys")
     check.add_argument("keys", nargs="*", type=Path, default=[DEFAULT_KEY])
-    check.add_argument("--scope", choices=SCOPES, default="neighbours")
+    check.add_argument("--scope", choices=SCOPES, default=SCOPE)
 
     args = parser.parse_args()
     if args.command == "index":
@@ -85,7 +106,7 @@ def main():
 
         build_index(args.records)
     elif args.command == "trace":
-        print_trace(args.claim, args.records, args.scope)
+        print_trace(args.claim, args.records, args.scope, args.day, args.since, args.until)
     elif args.command == "check":
         from tracer.evaluate import check as run_check
 

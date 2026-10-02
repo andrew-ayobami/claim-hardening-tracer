@@ -1,0 +1,25 @@
+# Words and phrases that deny or correct a claim, one per line. A matched
+# sentence containing one is marked "disputed": neither hedged nor stated as
+# fact. A phrase that also appears in the claim itself is ignored for that claim
+# (tracing "the wrong address" shouldn't dispute every sentence about it).
+# Matching ignores case and only counts whole words. Lines starting with # are ignored.
+# A bare "not" is left out on purpose: "(not just Claude)" isn't a denial. So
+# are "didn't" and "wasn't": they usually describe a failure that supports a
+# claim ("the link didn't load") rather than deny it.
+does not exist
+doesn't exist
+not actually
+never
+no longer
+non-existent
+nonexistent
+mistaken
+mistakenly
+incorrect
+false
+wrong
+confusion
+corrected
+correction
+hallucination
+debunked

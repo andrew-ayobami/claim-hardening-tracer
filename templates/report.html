@@ -18,6 +18,7 @@
     --wash: rgba(11, 11, 11, 0.04);
     --hedged: #2a78d6;   /* categorical slot 1 */
     --fact: #eb6834;     /* categorical slot 2 */
+    --other: #898781;    /* disputed or question: neutral, not a series */
     --mark-bg: rgba(235, 104, 52, 0.18);
   }
   @media (prefers-color-scheme: dark) {
@@ -61,8 +62,10 @@
   .stance { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); white-space: nowrap; }
   .stance::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--fact); }
   .stance.hedged::before { background: var(--hedged); }
+  .stance.disputed::before, .stance.question::before { background: var(--other); }
   .stance.weak::before { background: transparent; box-shadow: inset 0 0 0 2px var(--fact); }
   .stance.hedged.weak::before { box-shadow: inset 0 0 0 2px var(--hedged); }
+  .stance.disputed.weak::before, .stance.question.weak::before { box-shadow: inset 0 0 0 2px var(--other); }
 
   .timeline-head { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
   .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--ink-2); font-size: 12px; align-items: center; }
@@ -128,7 +131,7 @@
         <div class="label">{{ m.label }}</div>
         <div><span class="who">{{ m.agent }}</span> <span class="meta">· {{ m.channel }} · {{ m.when }}</span></div>
         <q>{{ m.excerpt }}</q>
-        <div><span class="stance {{ m.stance }}">{{ "Hedged" if m.stance == "hedged" else "Stated as fact" }}{% if m.hedges %}: {{ m.hedges | join(", ") }}{% endif %}</span></div>
+        <div><span class="stance {{ m.stance }}">{{ m.stance_label }}{% if m.cues %}: {{ m.cues | join(", ") }}{% endif %}</span></div>
       </div>
       {% endfor %}
     </div>
@@ -141,12 +144,13 @@
       <div class="legend" aria-label="Legend">
         <span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--hedged)"/></svg>Hedged</span>
         <span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--fact)"/></svg>Stated as fact</span>
+        <span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--other)"/></svg>Disputed or question</span>
         <span><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="none" stroke="var(--ink-2)" stroke-width="2"/></svg>Weak match</span>
         <span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--ink-2)"/></svg>Chat</span>
         <span><svg width="12" height="12"><rect x="1" y="1" width="10" height="10" rx="2" fill="var(--ink-2)"/></svg>Memory</span>
         <span><svg width="12" height="12"><path d="M6 0 L12 6 L6 12 L0 6 Z" fill="var(--ink-2)"/></svg>Computer use</span>
       </div>
-      <label class="toggle"><input type="checkbox" id="show-weak" checked> Show weak matches</label>
+      <label class="toggle"><input type="checkbox" id="show-weak"> Show weak matches</label>
     </div>
     <div class="timeline-body">
       <div id="plot" aria-label="Timeline of appearances; the table below lists the same data"><div id="tooltip" role="status"></div></div>
@@ -165,7 +169,7 @@
           <td class="num">{{ r.when }}</td>
           <td>{{ r.agent }}{% if r.role == "hardening" %}<br><strong>Hardening point</strong>{% elif r.role == "origin" %}<br><strong>First appearance</strong>{% endif %}</td>
           <td>{{ r.channel }}</td>
-          <td><span class="stance {{ r.stance }}{% if not r.strong %} weak{% endif %}">{{ "Hedged" if r.stance == "hedged" else "Fact" }}</span>{% if r.hedges %}<br><span class="meta">{{ r.hedges | join(", ") }}</span>{% endif %}</td>
+          <td><span class="stance {{ r.stance }}{% if not r.strong %} weak{% endif %}">{{ r.stance_label }}</span>{% if r.cues %}<br><span class="meta">{{ r.cues | join(", ") }}</span>{% endif %}</td>
           <td class="num">{{ "strong" if r.strong else "weak" }}<br>{{ r.methods | join(", ") }} · {{ "%.2f" | format(r.similarity) }}</td>
           <td>{{ r.excerpt }}</td>
           <td><a href="{{ r.link }}" target="_blank" rel="noopener">Open</a></td>
@@ -177,11 +181,13 @@
   </section>
 
   <footer>
-    A match is strong if keyword (≥ {{ data.settings.keyword_min }}), fuzzy (≥ {{ data.settings.fuzzy_min }}) or embedding
-    similarity (≥ {{ data.settings.embed_strong }}) fired; weak matches are embedding-only between {{ data.settings.embed_min }}
-    and {{ data.settings.embed_strong }} and can't be the first appearance or hardening point. Hedges are looked for in the
-    matched sentence's {{ data.settings.scope }}. Matching text doesn't prove one agent influenced another, and hedge words are a
-    rough signal. Times are UTC.
+    A match is strong if keyword (≥ {{ data.settings.keyword_min }}, rarity-weighted), fuzzy (≥ {{ data.settings.fuzzy_min }}) or
+    embedding similarity (≥ {{ data.settings.embed_strong }}) fired, and core, a close restatement of the claim, at similarity
+    ≥ {{ data.settings.core_min }}. Weak matches are embedding-only between {{ data.settings.embed_min }} and
+    {{ data.settings.embed_strong }} and play no part in the analysis. The hardening point is the first core match stated as fact
+    after a hedged one. Hedge words are looked for in the matched sentence's {{ data.settings.scope }}; a sentence that denies or
+    corrects the claim is marked disputed, and one that asks is a question. Matching text doesn't prove one agent influenced
+    another, and these word lists are a rough signal. Times are UTC.
   </footer>
 </main>
 
@@ -275,7 +281,7 @@
 
     for (const r of visible) {
       const x = xOf(r.t), y = TOP + lanes.indexOf(r.agent) * LANE_H + LANE_H / 2;
-      const color = r.stance === "hedged" ? "var(--hedged)" : "var(--fact)";
+      const color = r.stance === "hedged" ? "var(--hedged)" : r.stance === "fact" ? "var(--fact)" : "var(--other)";
       const paint = r.strong ? { fill: color, stroke: "var(--surface)", "stroke-width": 2, "paint-order": "stroke" }
                              : { fill: "var(--surface)", stroke: color, "stroke-width": 2 };
       if (r.channel === "memory") el("rect", Object.assign({ x: x - 5, y: y - 5, width: 10, height: 10, rx: 2 }, paint), svg);
@@ -283,7 +289,7 @@
       else el("circle", Object.assign({ cx: x, cy: y, r: 5.5 }, paint), svg);
 
       const hit = el("circle", { cx: x, cy: y, r: 12, class: "hit", tabindex: 0, role: "button",
-        "aria-label": `${r.agent}, ${r.channel}, ${r.when}, ${r.stance === "hedged" ? "hedged" : "stated as fact"}` }, svg);
+        "aria-label": `${r.agent}, ${r.channel}, ${r.when}, ${r.stance_label}` }, svg);
       const ring = el("circle", { cx: x, cy: y, r: 9, class: "ring" + (selected === r.id ? " selected" : ""), fill: "none" }, svg);
       ring.dataset.id = r.id;
       hit.addEventListener("pointermove", e => showTip(r, e));
@@ -297,7 +303,7 @@
   function showTip(r, e) {
     tooltip.replaceChildren();
     const strong = document.createElement("strong"); strong.textContent = `${r.clock} · ${r.agent}`;
-    const line = document.createElement("span"); line.textContent = `${r.channel} · ${r.stance === "hedged" ? "hedged" : "stated as fact"}${r.strong ? "" : " · weak match"}`;
+    const line = document.createElement("span"); line.textContent = `${r.channel} · ${r.stance_label.toLowerCase()}${r.strong ? "" : " · weak match"}`;
     tooltip.append(strong, line);
     const box = plot.getBoundingClientRect();
     tooltip.style.display = "block";
@@ -319,10 +325,11 @@
     const chips = add("div", null, "chips");
     const stance = document.createElement("span");
     stance.className = "stance " + r.stance + (r.strong ? "" : " weak");
-    stance.textContent = r.stance === "hedged" ? "Hedged" : "Stated as fact";
+    stance.textContent = r.stance_label;
     chips.appendChild(stance);
     const roleName = { hardening: "Hardening point", origin: "First appearance", action: "Action after hardening" }[r.role];
-    for (const label of [roleName, ...r.hedges.map(h => `“${h}”`), (r.strong ? "strong" : "weak") + " match: " + r.methods.join(", ")]) {
+    const tier = r.core ? "core" : r.strong ? "strong" : "weak";
+    for (const label of [roleName, ...r.cues.map(h => `“${h}”`), tier + " match: " + r.methods.join(", ")]) {
       if (!label) continue;
       const c = document.createElement("span"); c.className = "chip"; c.textContent = label; chips.appendChild(c);
     }

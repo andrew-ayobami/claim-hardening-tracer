@@ -1,6 +1,7 @@
 {
   "dataset": "demo",
   "records": "demo_data/records.jsonl",
+  "complete": true,
   "cases": [
     {
       "name": "permit-form-submitted",

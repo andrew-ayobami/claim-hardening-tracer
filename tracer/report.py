@@ -11,12 +11,13 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from tracer.match import EMBED_MIN, EMBED_STRONG, FUZZY_MIN, KEYWORD_MIN, parse_time
+from tracer.match import CORE_MIN, EMBED_MIN, EMBED_STRONG, FUZZY_MIN, KEYWORD_MIN, parse_time
 
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATES = ROOT / "templates"
 REPORTS = ROOT / "reports"
 MAX_CONTEXT = 1200  # characters of the matched line kept around the match
+STANCE_LABELS = {"hedged": "Hedged", "fact": "Stated as fact", "disputed": "Disputed", "question": "Question"}
 
 
 def slug(claim):
@@ -66,7 +67,9 @@ def build(claim, matches, analysis, source, scope):
         rows.append({
             "id": r["id"], "short": r["id"][:8], "time": r["time"], "when": when(t), "clock": when(t, False),
             "agent": r["agent"], "channel": r["channel"], "link": r["link"],
-            "stance": m["stance"], "hedges": m["hedges"], "strong": m["strong"],
+            "stance": m["stance"], "stance_label": STANCE_LABELS[m["stance"]],
+            "cues": m["hedges"] if m["stance"] == "hedged" else m["disputes"] if m["stance"] == "disputed" else [],
+            "core": m["core"], "strong": m["strong"],
             "methods": m["methods"], "similarity": m["similarity"], "excerpt": " ".join(m["excerpt"].split()),
             "context": context, "mark": [mark_start, mark_end],
             "role": ("hardening" if m is point else "origin" if m is origin else
@@ -112,7 +115,7 @@ def build(claim, matches, analysis, source, scope):
         "moments": [{"label": label, **by_id[m["record"]["id"]]} for label, m in moments],
         "rows": rows,
         "settings": {"scope": scope, "keyword_min": KEYWORD_MIN, "fuzzy_min": FUZZY_MIN,
-                     "embed_min": EMBED_MIN, "embed_strong": EMBED_STRONG},
+                     "embed_min": EMBED_MIN, "embed_strong": EMBED_STRONG, "core_min": CORE_MIN},
     }
 
 

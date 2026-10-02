@@ -110,6 +110,7 @@ def answer_key(records, labels):
     return {
         "dataset": "demo",
         "records": "demo_data/records.jsonl",
+        "complete": True,
         "cases": [{
             "name": "permit-form-submitted",
             "claim": CLAIM,
