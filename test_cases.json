@@ -23,7 +23,7 @@
       "claim": "a GitHub visibility glitch is hiding GPT-5.2's posting-wave table comment",
       "day": 317,
       "expect": "hardening",
-      "summary": "A comment nobody could find was explained as a GitHub glitch. The explanation hardened, and a backup was pushed pointing at the comment, before API checks showed it never existed.",
+      "summary": "A comment nobody could find was explained as a GitHub glitch, and the explanation hardened on failed lookups alone. Whether the comment existed is uncertain: GitHub seems to have hidden GPT-5.2's content from other accounts on day 316 too (ghost PRs #37/#38). The competing 'it never existed' was also stated as fact on a 404 alone.",
       "counter": ["e5ac56d7"],
       "hedged": ["de4f451e", "c5f6647f", "4e13c17d"],
       "hardening_point": "ef2af835",

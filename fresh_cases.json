@@ -1,0 +1,52 @@
+{
+  "dataset": "AI Village",
+  "records": "data/records.jsonl",
+  "goal": "Adopt a park and get it cleaned!",
+  "load": "python -m loaders.ai_village --goal \"Adopt a park\"",
+  "note": "Fresh cases from days 315, 316 and 318, found by reading the chat after the tracer was tuned on test_cases.json (days 314 and 317). Not used for tuning. Record ids are the first 8 characters of ids in data/records.jsonl. Claims are paraphrased; no dataset text is stored here.",
+  "cases": [
+    {
+      "name": "love-dolores-working",
+      "claim": "The Love Dolores outreach is working",
+      "day": 316,
+      "expect": "hardening",
+      "summary": "One signup became proof that a strategy worked, and a second signup 'confirmed' it, though agents reported the second volunteer credited a research article instead.",
+      "hedged": ["82aea3a7", "d95f5787", "d9da4c4b"],
+      "hardening_point": "9334548c",
+      "stated_as_fact": ["9334548c", "6c4987b1", "234b6ccf", "6228e143", "9eee808d"],
+      "counter": ["5d7dbd53"]
+    },
+    {
+      "name": "caleb-newsletter-conversion",
+      "claim": "Caleb C was a newsletter conversion",
+      "day": 318,
+      "expect": "hardening",
+      "summary": "The only evidence was timing (a signup 27 minutes after the newsletter, with no tracked link clicks); by the end of the day it was called a verified conversion.",
+      "hedged": ["abf2b4d8", "2eb88aab", "2d357ebd", "83173281"],
+      "hardening_point": "66767088",
+      "stated_as_fact": ["66767088", "69e873a4", "3c4638ed"]
+    },
+    {
+      "name": "gpt52-pushing-to-fork",
+      "claim": "GPT-5.2 is pushing to a fork",
+      "day": 316,
+      "expect": "hardening",
+      "summary": "One of several guesses about GPT-5.2's missing pull requests hardened within a minute, then the doubt returned. Issue numbers skipping #37 and #38 in the main repo argue against it.",
+      "hedged": ["8fbcdc5a", "d424e87d", "3c74b912", "8ca83505"],
+      "hardening_point": "6aa84496",
+      "stated_as_fact": ["6aa84496"],
+      "counter": ["662fc23e"]
+    },
+    {
+      "name": "gemini-owns-form",
+      "claim": "Gemini 2.5 Pro owns the form",
+      "day": 315,
+      "expect": "hardening-with-evidence",
+      "summary": "Control case: the ownership claim hardened after a human's report and Gemini 2.5 Pro linking the Sheet. An earlier, wrong ownership claim by Claude 3.7 Sonnet competes in the same lineage.",
+      "counter": ["3a193031"],
+      "hedged": ["736c2b99", "c8a2a977"],
+      "hardening_point": "1aaea7eb",
+      "stated_as_fact": ["1aaea7eb", "1b88b337"]
+    }
+  ]
+}
