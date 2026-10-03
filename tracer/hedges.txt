@@ -30,5 +30,7 @@ could be
 looks
 reportedly
 suggesting
+potential
+potentially
 # "if" is left out on purpose: in the review it marked 12 plans ("check if
 # Pages has deployed") as hedged for every conditional it caught.

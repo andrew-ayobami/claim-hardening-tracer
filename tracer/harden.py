@@ -10,7 +10,9 @@ Each match gets one stance, checked in this order:
 - fact: none of the above
 
 The hardening point is the first close restatement of the claim (a core match)
-stated as fact within WINDOW of a hedged match. Hedges count from any strong
+stated as fact within WINDOW of a hedged match, in chat or memory. Computer-use
+sessions can't be the hardening point: a session goal is a plan that takes its
+premise as given ("Check if Pages has deployed the fix"), not a statement. Hedges count from any strong
 match, since doubt is often voiced in looser wording than the claim ("Reddit
 likely isn't reachable"). A fact hours after the last hedge is a new episode
 rather than doubt being dropped, hence the window. Questions and disputes are
@@ -102,7 +104,7 @@ def harden(matches, claim="", hedges=None, scope=SCOPE):
         t = parse_time(m["record"]["time"])
         if m["stance"] == "hedged":
             hedged.append(m)
-        elif (m["stance"] == "fact" and m["core"] and hedged
+        elif (m["stance"] == "fact" and m["core"] and m["record"]["channel"] != "computer use" and hedged
               and t - parse_time(hedged[-1]["record"]["time"]) <= WINDOW):
             point = m
             break

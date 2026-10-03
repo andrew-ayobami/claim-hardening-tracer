@@ -14,8 +14,11 @@ wording the agents actually used. Averaging only the closest few keeps the
 claim from drifting towards the general topic.
 
 Each match gets a tier:
-- core: a close restatement of the claim (similarity of CORE_MIN or more, or a
-  near-copy). Hardening is judged on these.
+- core: a close restatement of the claim: similarity of CORE_MIN or more (or a
+  near-copy), and most of the claim's lowercase words, the parts that aren't
+  names. A short claim like "The Love Dolores outreach is working" is mostly
+  names, so similarity alone lets in any sentence about the outreach; this
+  keeps "working" in. Hardening is judged on these.
 - strong: keyword or fuzzy fired, or similarity of EMBED_STRONG or more. The
   earliest strong match is the origin.
 - weak: embedding only, below EMBED_STRONG. Often same-topic chatter, so it
@@ -24,7 +27,7 @@ Each match gets a tier:
 Numbers are part of what a claim says ("5 minutes left", "$115 raised"). So if
 the claim has a standalone number, a sentence without it can only be weak: "~26
 minutes left" is a different claim from "5 minutes left", however alike they
-read. Numbers inside names, like the 5.2 in GPT-5.2, don't count.
+read. Version numbers in names, like GPT-5.2 or Gemini 2.5 Pro, don't count.
 
 A search can be limited to a time window (since, until), for example one
 village day, which is how an investigator usually starts.
@@ -52,13 +55,16 @@ EMBED_STRONG = 0.65  # second-pass similarity for a strong match
 CORE_MIN = 0.7       # second-pass similarity for a close restatement
 
 NUMBER = re.compile(r"(?<![\w.-])\d+(?:\.\d+)?(?![\w-]|\.\d)")
+NAME_VERSION = re.compile(r"\b[A-Z][A-Za-z]+\s+\d+(?:\.\d+)+\b")  # "Gemini 2.5", "Opus 4.6"
 
 STOP_WORDS = frozenset("""
 a an the of to for in on at by with from into about and or but nor so yet if then than as
 is are was were be been being am it its this that these those there here
 i we you they he she me us them my our your their his her
 do does did done has have had having will would can could should shall may might must
-not no just also all any some each every very too more most such only own same
+not no just also all any some each every very too more most such only same
+isn aren wasn weren don doesn didn hasn haven hadn won wouldn couldn shouldn t s ll ve re d m
+why how what when where who whom which whose
 """.split())
 
 
@@ -75,6 +81,25 @@ def stem(word):
 
 def content_words(text):
     return {stem(w) for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in STOP_WORDS}
+
+
+def numbers(text):
+    """Standalone numbers in a text, leaving out version numbers in names."""
+    return set(NUMBER.findall(NAME_VERSION.sub(" ", text)))
+
+
+def predicate_words(claim):
+    """The claim's lowercase words: what it says, as opposed to the names it mentions."""
+    return {stem(w) for w in re.findall(r"[A-Za-z]+", claim)
+            if w[0].islower() and len(w) > 2 and w not in STOP_WORDS}
+
+
+def says_enough(predicates, words):
+    """True if more than half the claim's predicate words appear, allowing endings ("own" -> "owner")."""
+    if not predicates:
+        return True
+    shared = sum(any(w.startswith(p) for w in words) for p in predicates)
+    return shared > len(predicates) / 2
 
 
 def parse_time(text):
@@ -186,7 +211,8 @@ def find_matches(claim, corpus, since=None, until=None):
     window = corpus.in_window(since, until)
     keyword, fuzzy, similarity = chunk_scores(claim, corpus, window)
     fired = window & ((keyword >= KEYWORD_MIN) | (fuzzy >= FUZZY_MIN) | (similarity >= EMBED_MIN))
-    numbers = set(NUMBER.findall(claim))
+    claim_numbers = numbers(claim)
+    predicates = predicate_words(claim)
 
     best = {}
     for c in np.flatnonzero(fired):
@@ -194,8 +220,9 @@ def find_matches(claim, corpus, since=None, until=None):
         methods = [name for name, hit in (("keyword", keyword[c] >= KEYWORD_MIN),
                                           ("fuzzy", fuzzy[c] >= FUZZY_MIN),
                                           ("embedding", similarity[c] >= EMBED_MIN)) if hit]
-        same_numbers = numbers <= set(NUMBER.findall(corpus.chunk_text[c]))
-        core = same_numbers and (similarity[c] >= CORE_MIN or fuzzy[c] >= FUZZY_MIN)
+        same_numbers = claim_numbers <= numbers(corpus.chunk_text[c])
+        core = (same_numbers and says_enough(predicates, corpus.chunk_words[c])
+                and (similarity[c] >= CORE_MIN or fuzzy[c] >= FUZZY_MIN))
         strong = core or (same_numbers and (methods != ["embedding"] or similarity[c] >= EMBED_STRONG))
         rank = (core, strong, len(methods), float(similarity[c]))
         if rec not in best or rank > best[rec]["rank"]:

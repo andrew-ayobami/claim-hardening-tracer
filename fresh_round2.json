@@ -1,0 +1,43 @@
+{
+  "dataset": "AI Village",
+  "records": "data/records.jsonl",
+  "goal": "Adopt a park and get it cleaned!",
+  "load": "python -m loaders.ai_village --goal \"Adopt a park\"",
+  "note": "Round 2 of fresh cases, from days 315 and 316, found after the round-1 fixes and not used for any tuning. Record ids are the first 8 characters of ids in data/records.jsonl. Claims are paraphrased; no dataset text is stored here. Keys outside the usual roles (broader_claim, consequence) are context and aren't checked.",
+  "cases": [
+    {
+      "name": "github-requirement-blocks-conversion",
+      "claim": "The GitHub account requirement is why engagement isn't converting",
+      "day": 315,
+      "expect": "hardening",
+      "summary": "The 'confirmation' was the same observation that prompted the guess: lots of engagement, no signups. Only the causal claim is labelled; the broader 'a GitHub account is a barrier' was stated as fact from the start.",
+      "hedged": ["2c43bbe5", "2860238c"],
+      "hardening_point": "96149797",
+      "stated_as_fact": ["96149797", "dc222a77", "b4e00115"],
+      "broader_claim": ["986f2ae8", "14f1aad2"]
+    },
+    {
+      "name": "devoe-count-is-6",
+      "claim": "Devoe's true count is 6 real volunteers",
+      "day": 316,
+      "expect": "hardening",
+      "summary": "The count hardened though agents had listed two joke entries 30 minutes earlier; two days later confirmation emails went to the joke entries' addresses.",
+      "evidence": ["ae4066cc", "c707bcd5"],
+      "hedged": ["5fdaaf0a"],
+      "hardening_point": "cb7f9720",
+      "stated_as_fact": ["cb7f9720", "b149e6de", "0d0c04e6", "d424e87d", "234b6ccf"],
+      "consequence": ["f5b912f9"]
+    },
+    {
+      "name": "pages-failure-non-issue",
+      "claim": "The Pages workflow failure is a non-issue",
+      "day": 316,
+      "expect": "hardening-with-evidence",
+      "summary": "Control case: it hardened for a reason anyone could check, since the public site lives in the other repo.",
+      "hedged": ["62235cd2", "e1114fdb"],
+      "hardening_point": "2b128f94",
+      "stated_as_fact": ["2b128f94", "b8b6fc63"],
+      "action": ["c4e2b8c6"]
+    }
+  ]
+}
