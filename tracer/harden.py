@@ -25,7 +25,7 @@ import re
 from datetime import timedelta
 from pathlib import Path
 
-from tracer.match import parse_time
+from tracer.match import origin, parse_time
 
 WINDOW = timedelta(minutes=30)  # a hardening fact must follow a hedge within this
 
@@ -118,7 +118,7 @@ def harden(matches, claim="", hedges=None, scope=SCOPE):
         actions = [m for m in strong if m["record"]["channel"] == "computer use"
                    and parse_time(m["record"]["time"]) > after]
     return {
-        "origin": strong[0] if strong else None,
+        "origin": origin(matches),
         "hardening_point": point,
         "hedged_before": hedged_before,
         "actions": actions,

@@ -14,7 +14,8 @@ demo_data/expected.json; test_cases.json holds the real cases.
 --day limits the search to one AI Village day; --since and --until take ISO
 times in UTC (2026-02-09 or 2026-02-09T20:00). --scope sets how much text
 around a match is checked for hedge words: sentence, neighbours (one sentence
-either side) or line (the default).
+either side) or line (the default). --compact writes a smaller report with only
+close restatements, hedged appearances and actions, for sharing.
 """
 
 import argparse
@@ -34,7 +35,7 @@ def utc_time(text):
     return t if t.tzinfo else t.replace(tzinfo=timezone.utc)
 
 
-def print_trace(claim, records_path, scope, day=None, since=None, until=None):
+def print_trace(claim, records_path, scope, day=None, since=None, until=None, compact=False):
     from tracer.evaluate import one_line
     from tracer.harden import harden
     from tracer.match import Corpus, day_window, find_matches
@@ -76,7 +77,7 @@ def print_trace(claim, records_path, scope, day=None, since=None, until=None):
     source = source.relative_to(ROOT).as_posix() if source.is_relative_to(ROOT) else source.name
     if day is not None:
         source += f", day {day}"
-    print(f"\nReport: {write_report(claim, matches, result, source, scope)}")
+    print(f"\nReport: {write_report(claim, matches, result, source, scope, compact=compact)}")
 
 
 def main():
@@ -95,6 +96,7 @@ def main():
     trace.add_argument("--since", type=utc_time, help="limit the search to records from this UTC time")
     trace.add_argument("--until", type=utc_time, help="...and before this UTC time")
     trace.add_argument("--scope", choices=SCOPES, default=SCOPE)
+    trace.add_argument("--compact", action="store_true", help="smaller report for sharing")
 
     check = commands.add_parser("check", help="score the tracer against hand-labelled answer keys")
     check.add_argument("keys", nargs="*", type=Path, default=[DEFAULT_KEY])
@@ -106,7 +108,7 @@ def main():
 
         build_index(args.records)
     elif args.command == "trace":
-        print_trace(args.claim, args.records, args.scope, args.day, args.since, args.until)
+        print_trace(args.claim, args.records, args.scope, args.day, args.since, args.until, args.compact)
     elif args.command == "check":
         from tracer.evaluate import check as run_check
 

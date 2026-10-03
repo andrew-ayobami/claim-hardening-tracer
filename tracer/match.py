@@ -19,8 +19,7 @@ Each match gets a tier:
   names. A short claim like "The Love Dolores outreach is working" is mostly
   names, so similarity alone lets in any sentence about the outreach; this
   keeps "working" in. Hardening is judged on these.
-- strong: keyword or fuzzy fired, or similarity of EMBED_STRONG or more. The
-  earliest strong match is the origin.
+- strong: keyword or fuzzy fired, or similarity of EMBED_STRONG or more.
 - weak: embedding only, below EMBED_STRONG. Often same-topic chatter, so it
   stays in the lineage but plays no part in the analysis.
 
@@ -28,6 +27,12 @@ Numbers are part of what a claim says ("5 minutes left", "$115 raised"). So if
 the claim has a standalone number, a sentence without it can only be weak: "~26
 minutes left" is a different claim from "5 minutes left", however alike they
 read. Version numbers in names, like GPT-5.2 or Gemini 2.5 Pro, don't count.
+
+The origin is the earliest core match, or the earliest strong match if there
+is none. On a busy day the earliest strong match is often a loosely related
+record; across the ten labelled real cases the earliest core match was a
+median of 1 minute from the labelled origin, against 61 minutes for the
+earliest strong match.
 
 A search can be limited to a time window (since, until), for example one
 village day, which is how an investigator usually starts.
@@ -246,5 +251,5 @@ def find_matches(claim, corpus, since=None, until=None):
 
 
 def origin(matches):
-    """The earliest strong match, or None."""
-    return next((m for m in matches if m["strong"]), None)
+    """The earliest close restatement (core match), else the earliest strong match, else None."""
+    return next((m for m in matches if m["core"]), None) or next((m for m in matches if m["strong"]), None)

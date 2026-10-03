@@ -111,7 +111,7 @@
 <body>
 <main>
   <header>
-    <p class="eyebrow">Claim hardening trace · {{ data.source }} · generated {{ data.generated }}</p>
+    <p class="eyebrow">Claim hardening trace · {{ data.source }} · generated {{ data.generated }}{% if data.compact %} · compact: close restatements, hedged appearances and actions only{% endif %}</p>
     <h1>“{{ data.claim }}”</h1>
     <p class="finding">{{ data.finding }}</p>
   </header>
@@ -167,7 +167,7 @@
         {% for r in data.rows %}
         <tr data-id="{{ r.id }}" tabindex="0">
           <td class="num">{{ r.when }}</td>
-          <td>{{ r.agent }}{% if r.role == "hardening" %}<br><strong>Hardening point</strong>{% elif r.role == "origin" %}<br><strong>First appearance</strong>{% endif %}</td>
+          <td>{{ r.agent }}{% if r.role == "hardening" %}<br><strong>Hardening point</strong>{% elif r.role == "origin" %}<br><strong>Origin</strong>{% endif %}</td>
           <td>{{ r.channel }}</td>
           <td><span class="stance {{ r.stance }}{% if not r.strong %} weak{% endif %}">{{ r.stance_label }}</span>{% if r.cues %}<br><span class="meta">{{ r.cues | join(", ") }}</span>{% endif %}</td>
           <td class="num">{{ "strong" if r.strong else "weak" }}<br>{{ r.methods | join(", ") }} · {{ "%.2f" | format(r.similarity) }}</td>
@@ -184,8 +184,8 @@
     A match is strong if keyword (≥ {{ data.settings.keyword_min }}, rarity-weighted), fuzzy (≥ {{ data.settings.fuzzy_min }}) or
     embedding similarity (≥ {{ data.settings.embed_strong }}) fired, and core, a close restatement of the claim, at similarity
     ≥ {{ data.settings.core_min }}. Weak matches are embedding-only between {{ data.settings.embed_min }} and
-    {{ data.settings.embed_strong }} and play no part in the analysis. The hardening point is the first core match stated as fact
-    after a hedged one. Hedge words are looked for in the matched sentence's {{ data.settings.scope }}; a sentence that denies or
+    {{ data.settings.embed_strong }} and play no part in the analysis. The origin is the first core match; the hardening point is
+    the first core match stated as fact within 30 minutes of a hedged one, in chat or memory. Hedge words are looked for in the matched sentence's {{ data.settings.scope }}; a sentence that denies or
     corrects the claim is marked disputed, and one that asks is a question. Matching text doesn't prove one agent influenced
     another, and these word lists are a rough signal. Times are UTC.
   </footer>
@@ -274,7 +274,7 @@
       const x = xOf(r.t);
       el("line", { x1: x, x2: x, y1: TOP - 6, y2: axisY, stroke: r.role === "hardening" ? "var(--ink)" : "var(--muted)",
                    "stroke-width": r.role === "hardening" ? 1.5 : 1 }, svg);
-      const label = (r.role === "hardening" ? "Hardening point " : "First appearance ") + clock(r.t);
+      const label = (r.role === "hardening" ? "Hardening point " : "Origin ") + clock(r.t);
       text(svg, label, { x: x + 4, y: TOP - 8, class: "rule-label", "text-anchor": x > width - 160 ? "end" : "start",
                          dx: x > width - 160 ? -8 : 0 });
     }
@@ -327,7 +327,7 @@
     stance.className = "stance " + r.stance + (r.strong ? "" : " weak");
     stance.textContent = r.stance_label;
     chips.appendChild(stance);
-    const roleName = { hardening: "Hardening point", origin: "First appearance", action: "Action after hardening" }[r.role];
+    const roleName = { hardening: "Hardening point", origin: "Origin", action: "Action after hardening" }[r.role];
     const tier = r.core ? "core" : r.strong ? "strong" : "weak";
     for (const label of [roleName, ...r.cues.map(h => `“${h}”`), tier + " match: " + r.methods.join(", ")]) {
       if (!label) continue;

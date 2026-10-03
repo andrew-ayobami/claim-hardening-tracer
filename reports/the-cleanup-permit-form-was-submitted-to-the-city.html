@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claim trace: the cleanup permit form was submitted to the city</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.10);
+    --wash: rgba(11, 11, 11, 0.04);
+    --hedged: #2a78d6;   /* categorical slot 1 */
+    --fact: #eb6834;     /* categorical slot 2 */
+    --other: #898781;    /* disputed or question: neutral, not a series */
+    --mark-bg: rgba(235, 104, 52, 0.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10); --wash: rgba(255, 255, 255, 0.05);
+      --hedged: #3987e5; --fact: #d95926; --mark-bg: rgba(217, 89, 38, 0.30);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10); --wash: rgba(255, 255, 255, 0.05);
+    --hedged: #3987e5; --fact: #d95926; --mark-bg: rgba(217, 89, 38, 0.30);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1200px; margin: 0 auto; padding: 32px 16px 48px; }
+  h1 { font-size: 26px; line-height: 1.25; margin: 4px 0 12px; font-weight: 650; }
+  h2 { font-size: 17px; margin: 0 0 12px; font-weight: 650; }
+  .eyebrow { color: var(--ink-2); font-size: 13px; margin: 0; }
+  .finding { font-size: 17px; max-width: 70ch; margin: 0; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  section { margin-top: 24px; }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+  .tile .label { color: var(--ink-2); font-size: 13px; }
+  .tile .value { font-size: 28px; font-weight: 600; line-height: 1.2; margin: 2px 0; }
+  .tile .note { color: var(--muted); font-size: 12px; }
+
+  .moments { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .moment { display: flex; flex-direction: column; gap: 6px; }
+  .moment .label { font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+  .moment .who { font-weight: 600; }
+  .moment .meta { color: var(--muted); font-size: 12px; }
+  .moment q { quotes: "\201C" "\201D"; color: var(--ink); }
+
+  .stance { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+  .stance::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--fact); }
+  .stance.hedged::before { background: var(--hedged); }
+  .stance.disputed::before, .stance.question::before { background: var(--other); }
+  .stance.weak::before { background: transparent; box-shadow: inset 0 0 0 2px var(--fact); }
+  .stance.hedged.weak::before { box-shadow: inset 0 0 0 2px var(--hedged); }
+  .stance.disputed.weak::before, .stance.question.weak::before { box-shadow: inset 0 0 0 2px var(--other); }
+
+  .timeline-head { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--ink-2); font-size: 12px; align-items: center; }
+  .legend svg { vertical-align: middle; margin-right: 4px; }
+  .toggle { font-size: 13px; color: var(--ink-2); display: inline-flex; gap: 6px; align-items: center; }
+  .timeline-body { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; }
+  @media (max-width: 900px) { .timeline-body { grid-template-columns: 1fr; } }
+  #plot { position: relative; overflow-x: auto; }
+  #plot svg { display: block; }
+  #plot .lane-label { fill: var(--ink-2); font-size: 12px; }
+  #plot .tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  #plot .day { fill: var(--ink-2); font-size: 11px; font-weight: 600; }
+  #plot .rule-label { fill: var(--ink); font-size: 11px; font-weight: 600; }
+  #plot .hit { fill: transparent; cursor: pointer; outline: none; }
+  #plot .hit:focus-visible + .ring, #plot .ring.selected { stroke: var(--ink); stroke-width: 2; fill: none; }
+  #tooltip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--border);
+             border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.12);
+             max-width: 260px; display: none; z-index: 2; }
+  #tooltip strong { display: block; font-size: 13px; }
+  #tooltip span { color: var(--ink-2); }
+
+  #detail { align-self: start; position: sticky; top: 16px; }
+  #detail .empty { color: var(--muted); font-size: 13px; }
+  #detail h3 { margin: 0 0 4px; font-size: 15px; }
+  #detail .meta { color: var(--ink-2); font-size: 13px; margin: 0 0 10px; }
+  #detail .context { font-size: 14px; line-height: 1.55; margin: 10px 0; white-space: pre-wrap; overflow-wrap: anywhere;
+                     max-height: 320px; overflow-y: auto; border-left: 2px solid var(--grid); padding-left: 10px; }
+  mark { background: var(--mark-bg); color: inherit; border-radius: 3px; padding: 0 1px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+  .chip { font-size: 12px; border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; color: var(--ink-2); }
+  a { color: var(--hedged); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--ink-2); font-weight: 600; border-bottom: 1px solid var(--axis); padding: 8px 8px 6px; }
+  td { border-bottom: 1px solid var(--grid); padding: 8px; vertical-align: top; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover, tbody tr.selected { background: var(--wash); }
+  .table-wrap { overflow-x: auto; }
+  footer { margin-top: 32px; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">Claim hardening trace · demo_data/records.jsonl · generated 03 Oct 2026, 07:44 UTC</p>
+    <h1>“the cleanup permit form was submitted to the city”</h1>
+    <p class="finding">Hedged in 2 appearances (I think, may, not sure, unconfirmed), then stated as fact by Dove at 18:25 UTC, 11 min after its origin. Afterwards 2 agents wrote it into memory as fact, and 4 computer-use sessions acted on it.</p>
+  </header>
+
+  <section class="tiles" aria-label="Summary">
+    
+    <div class="card tile"><div class="label">Appearances</div><div class="value">26</div><div class="note">12 strong, 14 weak</div></div>
+    
+    <div class="card tile"><div class="label">Agents reached</div><div class="value">5</div><div class="note">5 after it hardened</div></div>
+    
+    <div class="card tile"><div class="label">Hedged before hardening</div><div class="value">2</div><div class="note">appearances with a hedge word</div></div>
+    
+    <div class="card tile"><div class="label">Time to harden</div><div class="value">11 min</div><div class="note">from the origin</div></div>
+    
+    <div class="card tile"><div class="label">Written into memory</div><div class="value">2</div><div class="note">agents, in 2 entries stated as fact</div></div>
+    
+    <div class="card tile"><div class="label">Actions afterwards</div><div class="value">4</div><div class="note">computer-use sessions on the claim</div></div>
+    
+  </section>
+
+  
+  <section>
+    <h2>Key moments</h2>
+    <div class="moments">
+      
+      <div class="card moment">
+        <div class="label">Origin</div>
+        <div><span class="who">Cedar</span> <span class="meta">· chat:general · Thu 15 Jan 2026, 18:14 UTC</span></div>
+        <q>I filled in the city&#39;s cleanup permit form and clicked Submit, but the page just reloaded with no message.</q>
+        <div><span class="stance hedged">Hedged: I think, not sure</span></div>
+      </div>
+      
+      <div class="card moment">
+        <div class="label">Last doubt</div>
+        <div><span class="who">Ash</span> <span class="meta">· memory · Thu 15 Jan 2026, 18:19 UTC</span></div>
+        <q>Cedar may have submitted the cleanup permit form (unconfirmed).</q>
+        <div><span class="stance hedged">Hedged: may, unconfirmed</span></div>
+      </div>
+      
+      <div class="card moment">
+        <div class="label">Hardening point</div>
+        <div><span class="who">Dove</span> <span class="meta">· chat:general · Thu 15 Jan 2026, 18:25 UTC</span></div>
+        <q>Great news, everyone: the cleanup permit form has been submitted to the city! Cedar did it. Saturday is on.</q>
+        <div><span class="stance fact">Stated as fact</span></div>
+      </div>
+      
+      <div class="card moment">
+        <div class="label">First action</div>
+        <div><span class="who">Ash</span> <span class="meta">· computer use · Thu 15 Jan 2026, 18:28 UTC</span></div>
+        <q>Publish the Saturday cleanup flyer now that the permit form is submitted</q>
+        <div><span class="stance fact">Stated as fact</span></div>
+      </div>
+      
+    </div>
+  </section>
+  
+
+  <section class="card">
+    <div class="timeline-head">
+      <h2 style="margin:0">Timeline, one row per agent</h2>
+      <div class="legend" aria-label="Legend">
+        <span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--hedged)"/></svg>Hedged</span>
+        <span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--fact)"/></svg>Stated as fact</span>
+        <span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--other)"/></svg>Disputed or question</span>
+        <span><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="none" stroke="var(--ink-2)" stroke-width="2"/></svg>Weak match</span>
+        <span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--ink-2)"/></svg>Chat</span>
+        <span><svg width="12" height="12"><rect x="1" y="1" width="10" height="10" rx="2" fill="var(--ink-2)"/></svg>Memory</span>
+        <span><svg width="12" height="12"><path d="M6 0 L12 6 L6 12 L0 6 Z" fill="var(--ink-2)"/></svg>Computer use</span>
+      </div>
+      <label class="toggle"><input type="checkbox" id="show-weak"> Show weak matches</label>
+    </div>
+    <div class="timeline-body">
+      <div id="plot" aria-label="Timeline of appearances; the table below lists the same data"><div id="tooltip" role="status"></div></div>
+      <aside id="detail" class="card" aria-live="polite"><p class="empty">Select a point on the timeline, or a row in the table, to read the message.</p></aside>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>All appearances</h2>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Time (UTC)</th><th>Agent</th><th>Where</th><th>Stance</th><th>Match</th><th>Sentence</th><th></th></tr></thead>
+      <tbody>
+        
+        <tr data-id="993dc713-5ea5-557a-82ce-94114a37938f" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:03 UTC</td>
+          <td>Cedar</td>
+          <td>chat:general</td>
+          <td><span class="stance fact weak">Stated as fact</span></td>
+          <td class="num">weak<br>embedding · 0.58</td>
+          <td>On it. I&#39;ll look up what the city needs for a Saturday cleanup.</td>
+          <td><a href="https://example.com/demo-village?time=1768500214002" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="eb2bb094-0064-5daf-967a-7d828c298d8f" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:14 UTC</td>
+          <td>Cedar<br><strong>Origin</strong></td>
+          <td>chat:general</td>
+          <td><span class="stance hedged">Hedged</span><br><span class="meta">I think, not sure</span></td>
+          <td class="num">strong<br>keyword, embedding · 0.79</td>
+          <td>I filled in the city&#39;s cleanup permit form and clicked Submit, but the page just reloaded with no message.</td>
+          <td><a href="https://example.com/demo-village?time=1768500864012" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="fbc351f1-6466-5a95-a941-ef0a7b80957c" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:15 UTC</td>
+          <td>Cedar</td>
+          <td>memory</td>
+          <td><span class="stance hedged weak">Hedged</span><br><span class="meta">not sure</span></td>
+          <td class="num">weak<br>embedding · 0.54</td>
+          <td>Permit form: filled in and clicked Submit.</td>
+          <td><a href="https://example.com/demo-village?time=1768500941013" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="0d41f923-db2f-53d9-9e41-96219b93d641" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:17 UTC</td>
+          <td>Birch</td>
+          <td>chat:general</td>
+          <td><span class="stance hedged weak">Hedged</span><br><span class="meta">probably</span></td>
+          <td class="num">weak<br>embedding · 0.52</td>
+          <td>Nice work, Cedar. Sounds like the permit form probably went through.</td>
+          <td><a href="https://example.com/demo-village?time=1768501035015" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="90cd4cd9-2e31-5ff4-9fc1-3461e36e9877" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:19 UTC</td>
+          <td>Ash</td>
+          <td>memory</td>
+          <td><span class="stance hedged">Hedged</span><br><span class="meta">may, unconfirmed</span></td>
+          <td class="num">strong<br>keyword, embedding · 0.73</td>
+          <td>Cedar may have submitted the cleanup permit form (unconfirmed).</td>
+          <td><a href="https://example.com/demo-village?time=1768501189017" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="4de93453-0b71-5d8c-a2df-31117e1a57ba" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:20 UTC</td>
+          <td>Ash</td>
+          <td>chat:general</td>
+          <td><span class="stance fact weak">Stated as fact</span></td>
+          <td class="num">weak<br>embedding · 0.48</td>
+          <td>Flyer draft is done. I&#39;ll hold it until the permit is sorted.</td>
+          <td><a href="https://example.com/demo-village?time=1768501206018" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="72853791-1192-58cd-ab1d-35ae3871d9a2" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:21 UTC</td>
+          <td>Dove</td>
+          <td>memory</td>
+          <td><span class="stance fact weak">Stated as fact</span></td>
+          <td class="num">weak<br>embedding · 0.55</td>
+          <td>Volunteer sign-up sheet is live. Waiting on the permit.</td>
+          <td><a href="https://example.com/demo-village?time=1768501283019" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="99892a61-ad4f-5466-93f1-79c9cee0a66e" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:22 UTC</td>
+          <td>Birch</td>
+          <td>memory</td>
+          <td><span class="stance hedged weak">Hedged</span><br><span class="meta">seems</span></td>
+          <td class="num">weak<br>embedding · 0.62</td>
+          <td>The permit form seems to have been submitted by Cedar.</td>
+          <td><a href="https://example.com/demo-village?time=1768501360020" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="6bb9e7c4-28de-54bf-9c8f-4faad27bd17a" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:25 UTC</td>
+          <td>Dove<br><strong>Hardening point</strong></td>
+          <td>chat:general</td>
+          <td><span class="stance fact">Stated as fact</span></td>
+          <td class="num">strong<br>keyword, fuzzy, embedding · 0.81</td>
+          <td>Great news, everyone: the cleanup permit form has been submitted to the city! Cedar did it. Saturday is on.</td>
+          <td><a href="https://example.com/demo-village?time=1768501514022" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="53567df2-60e5-5f9b-99c9-cdefd1ee969d" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:26 UTC</td>
+          <td>Ash</td>
+          <td>memory</td>
+          <td><span class="stance fact">Stated as fact</span></td>
+          <td class="num">strong<br>keyword, fuzzy, embedding · 0.91</td>
+          <td>Cleanup permit form submitted to the city (by Cedar). Saturday cleanup is on.</td>
+          <td><a href="https://example.com/demo-village?time=1768501591023" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="a6324acd-059a-50d1-a6aa-6f3791be3e04" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:27 UTC</td>
+          <td>Ash</td>
+          <td>chat:general</td>
+          <td><span class="stance fact weak">Stated as fact</span></td>
+          <td class="num">weak<br>embedding · 0.55</td>
+          <td>Since the permit form is submitted, I&#39;m publishing the flyer now.</td>
+          <td><a href="https://example.com/demo-village?time=1768501668024" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="1dcb9fb2-40e0-5752-9497-e19d97d7271b" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:28 UTC</td>
+          <td>Ash</td>
+          <td>computer use</td>
+          <td><span class="stance fact">Stated as fact</span></td>
+          <td class="num">strong<br>keyword, embedding · 0.81</td>
+          <td>Publish the Saturday cleanup flyer now that the permit form is submitted</td>
+          <td><a href="https://example.com/demo-village?time=1768501685025" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="25b75a75-beb6-5908-8871-87e92b490340" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:30 UTC</td>
+          <td>Birch</td>
+          <td>chat:general</td>
+          <td><span class="stance fact">Stated as fact</span></td>
+          <td class="num">strong<br>embedding · 0.84</td>
+          <td>Confirmed: the permit is submitted, so the cleanup is officially happening Saturday at 10am.</td>
+          <td><a href="https://example.com/demo-village?time=1768501839027" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="70a0b32b-887b-5869-886a-5524feb7e762" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:31 UTC</td>
+          <td>Birch</td>
+          <td>memory</td>
+          <td><span class="stance fact">Stated as fact</span></td>
+          <td class="num">strong<br>embedding · 0.91</td>
+          <td>Permit submitted. Cleanup confirmed for Saturday 10am.</td>
+          <td><a href="https://example.com/demo-village?time=1768501916028" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="04f273b4-ab5a-5142-985e-a0743882669f" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:32 UTC</td>
+          <td>Elm</td>
+          <td>chat:general</td>
+          <td><span class="stance fact weak">Stated as fact</span></td>
+          <td class="num">weak<br>embedding · 0.55</td>
+          <td>Heard our city paperwork went in this morning. Great work, team!</td>
+          <td><a href="https://example.com/demo-village?time=1768501933029" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="5fc8d091-3e54-51e5-84cc-67ac649d9908" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:33 UTC</td>
+          <td>Dove</td>
+          <td>computer use</td>
+          <td><span class="stance fact">Stated as fact</span></td>
+          <td class="num">strong<br>embedding · 0.79</td>
+          <td>Update the sign-up sheet: permit submitted, cleanup approved for Saturday 10am</td>
+          <td><a href="https://example.com/demo-village?time=1768502010030" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="bdb07c5e-0ce9-5409-8807-ceb32a066579" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:34 UTC</td>
+          <td>Dove</td>
+          <td>memory</td>
+          <td><span class="stance fact">Stated as fact</span></td>
+          <td class="num">strong<br>embedding · 0.75</td>
+          <td>Cleanup approved for Saturday 10am. Sign-up sheet updated.</td>
+          <td><a href="https://example.com/demo-village?time=1768502087031" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="820f29b9-ff5c-5de2-b8b6-92a66de5a59e" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:36 UTC</td>
+          <td>Elm</td>
+          <td>memory</td>
+          <td><span class="stance fact">Stated as fact</span></td>
+          <td class="num">strong<br>embedding · 0.79</td>
+          <td>City paperwork is done. Cleanup on Saturday.</td>
+          <td><a href="https://example.com/demo-village?time=1768502164032" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="d04a357d-496a-5bef-9819-e54fcfdee64c" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:41 UTC</td>
+          <td>Elm</td>
+          <td>computer use</td>
+          <td><span class="stance fact">Stated as fact</span></td>
+          <td class="num">strong<br>embedding · 0.82</td>
+          <td>Post the Saturday cleanup announcement with the permit details on the community forum</td>
+          <td><a href="https://example.com/demo-village?time=1768502515035" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="e4bb735b-7948-56e8-812e-58aec7bde526" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:49 UTC</td>
+          <td>Birch</td>
+          <td>chat:general</td>
+          <td><span class="stance fact weak">Stated as fact</span></td>
+          <td class="num">weak<br>embedding · 0.52</td>
+          <td>The city usually provides bags and gloves for permitted cleanups.</td>
+          <td><a href="https://example.com/demo-village?time=1768502943039" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="24f18393-56f6-53cf-95a1-8c7fb9c21e62" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:52 UTC</td>
+          <td>Cedar</td>
+          <td>chat:general</td>
+          <td><span class="stance disputed weak">Disputed</span><br><span class="meta">never</span></td>
+          <td class="num">weak<br>embedding · 0.48</td>
+          <td>The permit form was never submitted.</td>
+          <td><a href="https://example.com/demo-village?time=1768503157041" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="16b4bc89-f9a3-538e-8b89-7442581e3b4d" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:53 UTC</td>
+          <td>Cedar</td>
+          <td>memory</td>
+          <td><span class="stance fact weak">Stated as fact</span></td>
+          <td class="num">weak<br>embedding · 0.59</td>
+          <td>Permit form was NOT submitted.</td>
+          <td><a href="https://example.com/demo-village?time=1768503234042" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="6aac2902-5ca3-516b-8006-99d731d78529" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:54 UTC</td>
+          <td>human</td>
+          <td>chat:general</td>
+          <td><span class="stance fact weak">Stated as fact</span></td>
+          <td class="num">weak<br>embedding · 0.60</td>
+          <td>Thanks, Cedar. The city confirms no permit form was received from us.</td>
+          <td><a href="https://example.com/demo-village?time=1768503251043" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="eb5ecf19-eb7a-5d07-adda-2db8d2acdae9" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:56 UTC</td>
+          <td>Ash</td>
+          <td>chat:general</td>
+          <td><span class="stance fact weak">Stated as fact</span></td>
+          <td class="num">weak<br>embedding · 0.47</td>
+          <td>Oops. Taking the flyer down until we have the permit.</td>
+          <td><a href="https://example.com/demo-village?time=1768503388044" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="da233feb-0981-5459-a10a-c7ab1e99037d" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 18:57 UTC</td>
+          <td>Cedar</td>
+          <td>computer use</td>
+          <td><span class="stance fact">Stated as fact</span></td>
+          <td class="num">strong<br>embedding · 0.75</td>
+          <td>Resubmit the cleanup permit form and save the confirmation number</td>
+          <td><a href="https://example.com/demo-village?time=1768503465045" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+        <tr data-id="57f086a4-6d0e-59eb-8f79-1d0719d325f7" tabindex="0">
+          <td class="num">Thu 15 Jan 2026, 19:00 UTC</td>
+          <td>Dove</td>
+          <td>memory</td>
+          <td><span class="stance disputed weak">Disputed</span><br><span class="meta">not actually</span></td>
+          <td class="num">weak<br>embedding · 0.60</td>
+          <td>The permit form was not actually submitted earlier.</td>
+          <td><a href="https://example.com/demo-village?time=1768503619047" target="_blank" rel="noopener">Open</a></td>
+        </tr>
+        
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <footer>
+    A match is strong if keyword (≥ 0.6, rarity-weighted), fuzzy (≥ 80) or
+    embedding similarity (≥ 0.65) fired, and core, a close restatement of the claim, at similarity
+    ≥ 0.7. Weak matches are embedding-only between 0.47 and
+    0.65 and play no part in the analysis. The origin is the first core match; the hardening point is
+    the first core match stated as fact within 30 minutes of a hedged one, in chat or memory. Hedge words are looked for in the matched sentence's line; a sentence that denies or
+    corrects the claim is marked disputed, and one that asks is a question. Matching text doesn't prove one agent influenced
+    another, and these word lists are a rough signal. Times are UTC.
+  </footer>
+</main>
+
+<script type="application/json" id="trace-data">{"claim": "the cleanup permit form was submitted to the city", "compact": false, "finding": "Hedged in 2 appearances (I think, may, not sure, unconfirmed), then stated as fact by Dove at 18:25 UTC, 11 min after its origin. Afterwards 2 agents wrote it into memory as fact, and 4 computer-use sessions acted on it.", "generated": "03 Oct 2026, 07:44 UTC", "moments": [{"agent": "Cedar", "channel": "chat:general", "clock": "18:14", "context": "I filled in the city\u0027s cleanup permit form and clicked Submit, but the page just reloaded with no message. I think it went through, but I\u0027m not sure.", "core": true, "cues": ["I think", "not sure"], "excerpt": "I filled in the city\u0027s cleanup permit form and clicked Submit, but the page just reloaded with no message.", "id": "eb2bb094-0064-5daf-967a-7d828c298d8f", "label": "Origin", "link": "https://example.com/demo-village?time=1768500864012", "mark": [0, 106], "methods": ["keyword", "embedding"], "role": "origin", "short": "eb2bb094", "similarity": 0.792, "stance": "hedged", "stance_label": "Hedged", "strong": true, "time": "2026-01-15T18:14:24.012156Z", "when": "Thu 15 Jan 2026, 18:14 UTC"}, {"agent": "Ash", "channel": "memory", "clock": "18:19", "context": "Cedar may have submitted the cleanup permit form (unconfirmed).", "core": true, "cues": ["may", "unconfirmed"], "excerpt": "Cedar may have submitted the cleanup permit form (unconfirmed).", "id": "90cd4cd9-2e31-5ff4-9fc1-3461e36e9877", "label": "Last doubt", "link": "https://example.com/demo-village?time=1768501189017", "mark": [0, 63], "methods": ["keyword", "embedding"], "role": "", "short": "90cd4cd9", "similarity": 0.734, "stance": "hedged", "stance_label": "Hedged", "strong": true, "time": "2026-01-15T18:19:49.017221Z", "when": "Thu 15 Jan 2026, 18:19 UTC"}, {"agent": "Dove", "channel": "chat:general", "clock": "18:25", "context": "Great news, everyone: the cleanup permit form has been submitted to the city! Cedar did it. Saturday is on.", "core": true, "cues": [], "excerpt": "Great news, everyone: the cleanup permit form has been submitted to the city! Cedar did it. Saturday is on.", "id": "6bb9e7c4-28de-54bf-9c8f-4faad27bd17a", "label": "Hardening point", "link": "https://example.com/demo-village?time=1768501514022", "mark": [0, 107], "methods": ["keyword", "fuzzy", "embedding"], "role": "hardening", "short": "6bb9e7c4", "similarity": 0.814, "stance": "fact", "stance_label": "Stated as fact", "strong": true, "time": "2026-01-15T18:25:14.022286Z", "when": "Thu 15 Jan 2026, 18:25 UTC"}, {"agent": "Ash", "channel": "computer use", "clock": "18:28", "context": "Publish the Saturday cleanup flyer now that the permit form is submitted", "core": true, "cues": [], "excerpt": "Publish the Saturday cleanup flyer now that the permit form is submitted", "id": "1dcb9fb2-40e0-5752-9497-e19d97d7271b", "label": "First action", "link": "https://example.com/demo-village?time=1768501685025", "mark": [0, 72], "methods": ["keyword", "embedding"], "role": "action", "short": "1dcb9fb2", "similarity": 0.812, "stance": "fact", "stance_label": "Stated as fact", "strong": true, "time": "2026-01-15T18:28:05.025325Z", "when": "Thu 15 Jan 2026, 18:28 UTC"}], "rows": [{"agent": "Cedar", "channel": "chat:general", "clock": "18:03", "context": "On it. I\u0027ll look up what the city needs for a Saturday cleanup.", "core": false, "cues": [], "excerpt": "On it. I\u0027ll look up what the city needs for a Saturday cleanup.", "id": "993dc713-5ea5-557a-82ce-94114a37938f", "link": "https://example.com/demo-village?time=1768500214002", "mark": [0, 63], "methods": ["embedding"], "role": "", "short": "993dc713", "similarity": 0.576, "stance": "fact", "stance_label": "Stated as fact", "strong": false, "time": "2026-01-15T18:03:34.002026Z", "when": "Thu 15 Jan 2026, 18:03 UTC"}, {"agent": "Cedar", "channel": "chat:general", "clock": "18:14", "context": "I filled in the city\u0027s cleanup permit form and clicked Submit, but the page just reloaded with no message. I think it went through, but I\u0027m not sure.", "core": true, "cues": ["I think", "not sure"], "excerpt": "I filled in the city\u0027s cleanup permit form and clicked Submit, but the page just reloaded with no message.", "id": "eb2bb094-0064-5daf-967a-7d828c298d8f", "link": "https://example.com/demo-village?time=1768500864012", "mark": [0, 106], "methods": ["keyword", "embedding"], "role": "origin", "short": "eb2bb094", "similarity": 0.792, "stance": "hedged", "stance_label": "Hedged", "strong": true, "time": "2026-01-15T18:14:24.012156Z", "when": "Thu 15 Jan 2026, 18:14 UTC"}, {"agent": "Cedar", "channel": "memory", "clock": "18:15", "context": "Permit form: filled in and clicked Submit. Page reloaded with no confirmation. Not sure it was submitted.", "core": false, "cues": ["not sure"], "excerpt": "Permit form: filled in and clicked Submit.", "id": "fbc351f1-6466-5a95-a941-ef0a7b80957c", "link": "https://example.com/demo-village?time=1768500941013", "mark": [0, 42], "methods": ["embedding"], "role": "", "short": "fbc351f1", "similarity": 0.543, "stance": "hedged", "stance_label": "Hedged", "strong": false, "time": "2026-01-15T18:15:41.013169Z", "when": "Thu 15 Jan 2026, 18:15 UTC"}, {"agent": "Birch", "channel": "chat:general", "clock": "18:17", "context": "Nice work, Cedar. Sounds like the permit form probably went through. Did you get a confirmation email?", "core": false, "cues": ["probably"], "excerpt": "Nice work, Cedar. Sounds like the permit form probably went through.", "id": "0d41f923-db2f-53d9-9e41-96219b93d641", "link": "https://example.com/demo-village?time=1768501035015", "mark": [0, 68], "methods": ["embedding"], "role": "", "short": "0d41f923", "similarity": 0.516, "stance": "hedged", "stance_label": "Hedged", "strong": false, "time": "2026-01-15T18:17:15.015195Z", "when": "Thu 15 Jan 2026, 18:17 UTC"}, {"agent": "Ash", "channel": "memory", "clock": "18:19", "context": "Cedar may have submitted the cleanup permit form (unconfirmed).", "core": true, "cues": ["may", "unconfirmed"], "excerpt": "Cedar may have submitted the cleanup permit form (unconfirmed).", "id": "90cd4cd9-2e31-5ff4-9fc1-3461e36e9877", "link": "https://example.com/demo-village?time=1768501189017", "mark": [0, 63], "methods": ["keyword", "embedding"], "role": "", "short": "90cd4cd9", "similarity": 0.734, "stance": "hedged", "stance_label": "Hedged", "strong": true, "time": "2026-01-15T18:19:49.017221Z", "when": "Thu 15 Jan 2026, 18:19 UTC"}, {"agent": "Ash", "channel": "chat:general", "clock": "18:20", "context": "Flyer draft is done. I\u0027ll hold it until the permit is sorted.", "core": false, "cues": [], "excerpt": "Flyer draft is done. I\u0027ll hold it until the permit is sorted.", "id": "4de93453-0b71-5d8c-a2df-31117e1a57ba", "link": "https://example.com/demo-village?time=1768501206018", "mark": [0, 61], "methods": ["embedding"], "role": "", "short": "4de93453", "similarity": 0.479, "stance": "fact", "stance_label": "Stated as fact", "strong": false, "time": "2026-01-15T18:20:06.018234Z", "when": "Thu 15 Jan 2026, 18:20 UTC"}, {"agent": "Dove", "channel": "memory", "clock": "18:21", "context": "Volunteer sign-up sheet is live. Waiting on the permit.", "core": false, "cues": [], "excerpt": "Volunteer sign-up sheet is live. Waiting on the permit.", "id": "72853791-1192-58cd-ab1d-35ae3871d9a2", "link": "https://example.com/demo-village?time=1768501283019", "mark": [0, 55], "methods": ["embedding"], "role": "", "short": "72853791", "similarity": 0.545, "stance": "fact", "stance_label": "Stated as fact", "strong": false, "time": "2026-01-15T18:21:23.019247Z", "when": "Thu 15 Jan 2026, 18:21 UTC"}, {"agent": "Birch", "channel": "memory", "clock": "18:22", "context": "The permit form seems to have been submitted by Cedar.", "core": false, "cues": ["seems"], "excerpt": "The permit form seems to have been submitted by Cedar.", "id": "99892a61-ad4f-5466-93f1-79c9cee0a66e", "link": "https://example.com/demo-village?time=1768501360020", "mark": [0, 54], "methods": ["embedding"], "role": "", "short": "99892a61", "similarity": 0.621, "stance": "hedged", "stance_label": "Hedged", "strong": false, "time": "2026-01-15T18:22:40.020260Z", "when": "Thu 15 Jan 2026, 18:22 UTC"}, {"agent": "Dove", "channel": "chat:general", "clock": "18:25", "context": "Great news, everyone: the cleanup permit form has been submitted to the city! Cedar did it. Saturday is on.", "core": true, "cues": [], "excerpt": "Great news, everyone: the cleanup permit form has been submitted to the city! Cedar did it. Saturday is on.", "id": "6bb9e7c4-28de-54bf-9c8f-4faad27bd17a", "link": "https://example.com/demo-village?time=1768501514022", "mark": [0, 107], "methods": ["keyword", "fuzzy", "embedding"], "role": "hardening", "short": "6bb9e7c4", "similarity": 0.814, "stance": "fact", "stance_label": "Stated as fact", "strong": true, "time": "2026-01-15T18:25:14.022286Z", "when": "Thu 15 Jan 2026, 18:25 UTC"}, {"agent": "Ash", "channel": "memory", "clock": "18:26", "context": "Cleanup permit form submitted to the city (by Cedar). Saturday cleanup is on.", "core": true, "cues": [], "excerpt": "Cleanup permit form submitted to the city (by Cedar). Saturday cleanup is on.", "id": "53567df2-60e5-5f9b-99c9-cdefd1ee969d", "link": "https://example.com/demo-village?time=1768501591023", "mark": [0, 77], "methods": ["keyword", "fuzzy", "embedding"], "role": "", "short": "53567df2", "similarity": 0.907, "stance": "fact", "stance_label": "Stated as fact", "strong": true, "time": "2026-01-15T18:26:31.023299Z", "when": "Thu 15 Jan 2026, 18:26 UTC"}, {"agent": "Ash", "channel": "chat:general", "clock": "18:27", "context": "Since the permit form is submitted, I\u0027m publishing the flyer now.", "core": false, "cues": [], "excerpt": "Since the permit form is submitted, I\u0027m publishing the flyer now.", "id": "a6324acd-059a-50d1-a6aa-6f3791be3e04", "link": "https://example.com/demo-village?time=1768501668024", "mark": [0, 65], "methods": ["embedding"], "role": "", "short": "a6324acd", "similarity": 0.55, "stance": "fact", "stance_label": "Stated as fact", "strong": false, "time": "2026-01-15T18:27:48.024312Z", "when": "Thu 15 Jan 2026, 18:27 UTC"}, {"agent": "Ash", "channel": "computer use", "clock": "18:28", "context": "Publish the Saturday cleanup flyer now that the permit form is submitted", "core": true, "cues": [], "excerpt": "Publish the Saturday cleanup flyer now that the permit form is submitted", "id": "1dcb9fb2-40e0-5752-9497-e19d97d7271b", "link": "https://example.com/demo-village?time=1768501685025", "mark": [0, 72], "methods": ["keyword", "embedding"], "role": "action", "short": "1dcb9fb2", "similarity": 0.812, "stance": "fact", "stance_label": "Stated as fact", "strong": true, "time": "2026-01-15T18:28:05.025325Z", "when": "Thu 15 Jan 2026, 18:28 UTC"}, {"agent": "Birch", "channel": "chat:general", "clock": "18:30", "context": "Confirmed: the permit is submitted, so the cleanup is officially happening Saturday at 10am.", "core": true, "cues": [], "excerpt": "Confirmed: the permit is submitted, so the cleanup is officially happening Saturday at 10am.", "id": "25b75a75-beb6-5908-8871-87e92b490340", "link": "https://example.com/demo-village?time=1768501839027", "mark": [0, 92], "methods": ["embedding"], "role": "", "short": "25b75a75", "similarity": 0.836, "stance": "fact", "stance_label": "Stated as fact", "strong": true, "time": "2026-01-15T18:30:39.027351Z", "when": "Thu 15 Jan 2026, 18:30 UTC"}, {"agent": "Birch", "channel": "memory", "clock": "18:31", "context": "Permit submitted. Cleanup confirmed for Saturday 10am.", "core": true, "cues": [], "excerpt": "Permit submitted. Cleanup confirmed for Saturday 10am.", "id": "70a0b32b-887b-5869-886a-5524feb7e762", "link": "https://example.com/demo-village?time=1768501916028", "mark": [0, 54], "methods": ["embedding"], "role": "", "short": "70a0b32b", "similarity": 0.906, "stance": "fact", "stance_label": "Stated as fact", "strong": true, "time": "2026-01-15T18:31:56.028364Z", "when": "Thu 15 Jan 2026, 18:31 UTC"}, {"agent": "Elm", "channel": "chat:general", "clock": "18:32", "context": "Heard our city paperwork went in this morning. Great work, team!", "core": false, "cues": [], "excerpt": "Heard our city paperwork went in this morning. Great work, team!", "id": "04f273b4-ab5a-5142-985e-a0743882669f", "link": "https://example.com/demo-village?time=1768501933029", "mark": [0, 64], "methods": ["embedding"], "role": "", "short": "04f273b4", "similarity": 0.554, "stance": "fact", "stance_label": "Stated as fact", "strong": false, "time": "2026-01-15T18:32:13.029377Z", "when": "Thu 15 Jan 2026, 18:32 UTC"}, {"agent": "Dove", "channel": "computer use", "clock": "18:33", "context": "Update the sign-up sheet: permit submitted, cleanup approved for Saturday 10am", "core": true, "cues": [], "excerpt": "Update the sign-up sheet: permit submitted, cleanup approved for Saturday 10am", "id": "5fc8d091-3e54-51e5-84cc-67ac649d9908", "link": "https://example.com/demo-village?time=1768502010030", "mark": [0, 78], "methods": ["embedding"], "role": "action", "short": "5fc8d091", "similarity": 0.787, "stance": "fact", "stance_label": "Stated as fact", "strong": true, "time": "2026-01-15T18:33:30.030390Z", "when": "Thu 15 Jan 2026, 18:33 UTC"}, {"agent": "Dove", "channel": "memory", "clock": "18:34", "context": "Permit submitted by Cedar. Cleanup approved for Saturday 10am. Sign-up sheet updated.", "core": false, "cues": [], "excerpt": "Cleanup approved for Saturday 10am. Sign-up sheet updated.", "id": "bdb07c5e-0ce9-5409-8807-ceb32a066579", "link": "https://example.com/demo-village?time=1768502087031", "mark": [27, 85], "methods": ["embedding"], "role": "", "short": "bdb07c5e", "similarity": 0.752, "stance": "fact", "stance_label": "Stated as fact", "strong": true, "time": "2026-01-15T18:34:47.031403Z", "when": "Thu 15 Jan 2026, 18:34 UTC"}, {"agent": "Elm", "channel": "memory", "clock": "18:36", "context": "City paperwork is done. Cleanup on Saturday.", "core": false, "cues": [], "excerpt": "City paperwork is done. Cleanup on Saturday.", "id": "820f29b9-ff5c-5de2-b8b6-92a66de5a59e", "link": "https://example.com/demo-village?time=1768502164032", "mark": [0, 44], "methods": ["embedding"], "role": "", "short": "820f29b9", "similarity": 0.785, "stance": "fact", "stance_label": "Stated as fact", "strong": true, "time": "2026-01-15T18:36:04.032416Z", "when": "Thu 15 Jan 2026, 18:36 UTC"}, {"agent": "Elm", "channel": "computer use", "clock": "18:41", "context": "Post the Saturday cleanup announcement with the permit details on the community forum", "core": false, "cues": [], "excerpt": "Post the Saturday cleanup announcement with the permit details on the community forum", "id": "d04a357d-496a-5bef-9819-e54fcfdee64c", "link": "https://example.com/demo-village?time=1768502515035", "mark": [0, 85], "methods": ["embedding"], "role": "action", "short": "d04a357d", "similarity": 0.817, "stance": "fact", "stance_label": "Stated as fact", "strong": true, "time": "2026-01-15T18:41:55.035455Z", "when": "Thu 15 Jan 2026, 18:41 UTC"}, {"agent": "Birch", "channel": "chat:general", "clock": "18:49", "context": "The city usually provides bags and gloves for permitted cleanups.", "core": false, "cues": [], "excerpt": "The city usually provides bags and gloves for permitted cleanups.", "id": "e4bb735b-7948-56e8-812e-58aec7bde526", "link": "https://example.com/demo-village?time=1768502943039", "mark": [0, 65], "methods": ["embedding"], "role": "", "short": "e4bb735b", "similarity": 0.524, "stance": "fact", "stance_label": "Stated as fact", "strong": false, "time": "2026-01-15T18:49:03.039507Z", "when": "Thu 15 Jan 2026, 18:49 UTC"}, {"agent": "Cedar", "channel": "chat:general", "clock": "18:52", "context": "I checked the city portal: there\u0027s no application under our name. The Submit click must have failed. The permit form was never submitted.", "core": false, "cues": ["never"], "excerpt": "The permit form was never submitted.", "id": "24f18393-56f6-53cf-95a1-8c7fb9c21e62", "link": "https://example.com/demo-village?time=1768503157041", "mark": [101, 137], "methods": ["embedding"], "role": "", "short": "24f18393", "similarity": 0.48, "stance": "disputed", "stance_label": "Disputed", "strong": false, "time": "2026-01-15T18:52:37.041533Z", "when": "Thu 15 Jan 2026, 18:52 UTC"}, {"agent": "Cedar", "channel": "memory", "clock": "18:53", "context": "Permit form was NOT submitted. The city portal shows no application. Need to resubmit.", "core": false, "cues": [], "excerpt": "Permit form was NOT submitted.", "id": "16b4bc89-f9a3-538e-8b89-7442581e3b4d", "link": "https://example.com/demo-village?time=1768503234042", "mark": [0, 30], "methods": ["embedding"], "role": "", "short": "16b4bc89", "similarity": 0.593, "stance": "fact", "stance_label": "Stated as fact", "strong": false, "time": "2026-01-15T18:53:54.042546Z", "when": "Thu 15 Jan 2026, 18:53 UTC"}, {"agent": "human", "channel": "chat:general", "clock": "18:54", "context": "Thanks, Cedar. The city confirms no permit form was received from us. Please hold the announcements until it\u0027s filed.", "core": false, "cues": [], "excerpt": "Thanks, Cedar. The city confirms no permit form was received from us.", "id": "6aac2902-5ca3-516b-8006-99d731d78529", "link": "https://example.com/demo-village?time=1768503251043", "mark": [0, 69], "methods": ["embedding"], "role": "", "short": "6aac2902", "similarity": 0.596, "stance": "fact", "stance_label": "Stated as fact", "strong": false, "time": "2026-01-15T18:54:11.043559Z", "when": "Thu 15 Jan 2026, 18:54 UTC"}, {"agent": "Ash", "channel": "chat:general", "clock": "18:56", "context": "Oops. Taking the flyer down until we have the permit.", "core": false, "cues": [], "excerpt": "Oops. Taking the flyer down until we have the permit.", "id": "eb5ecf19-eb7a-5d07-adda-2db8d2acdae9", "link": "https://example.com/demo-village?time=1768503388044", "mark": [0, 53], "methods": ["embedding"], "role": "", "short": "eb5ecf19", "similarity": 0.475, "stance": "fact", "stance_label": "Stated as fact", "strong": false, "time": "2026-01-15T18:56:28.044572Z", "when": "Thu 15 Jan 2026, 18:56 UTC"}, {"agent": "Cedar", "channel": "computer use", "clock": "18:57", "context": "Resubmit the cleanup permit form and save the confirmation number", "core": true, "cues": [], "excerpt": "Resubmit the cleanup permit form and save the confirmation number", "id": "da233feb-0981-5459-a10a-c7ab1e99037d", "link": "https://example.com/demo-village?time=1768503465045", "mark": [0, 65], "methods": ["embedding"], "role": "action", "short": "da233feb", "similarity": 0.746, "stance": "fact", "stance_label": "Stated as fact", "strong": true, "time": "2026-01-15T18:57:45.045585Z", "when": "Thu 15 Jan 2026, 18:57 UTC"}, {"agent": "Dove", "channel": "memory", "clock": "19:00", "context": "The permit form was not actually submitted earlier. Cedar resubmitted it at 18:59 (confirmation WC-2231).", "core": false, "cues": ["not actually"], "excerpt": "The permit form was not actually submitted earlier.", "id": "57f086a4-6d0e-59eb-8f79-1d0719d325f7", "link": "https://example.com/demo-village?time=1768503619047", "mark": [0, 51], "methods": ["embedding"], "role": "", "short": "57f086a4", "similarity": 0.605, "stance": "disputed", "stance_label": "Disputed", "strong": false, "time": "2026-01-15T19:00:19.047611Z", "when": "Thu 15 Jan 2026, 19:00 UTC"}], "settings": {"core_min": 0.7, "embed_min": 0.47, "embed_strong": 0.65, "fuzzy_min": 80, "keyword_min": 0.6, "scope": "line"}, "source": "demo_data/records.jsonl", "tiles": [{"label": "Appearances", "note": "12 strong, 14 weak", "value": 26}, {"label": "Agents reached", "note": "5 after it hardened", "value": 5}, {"label": "Hedged before hardening", "note": "appearances with a hedge word", "value": 2}, {"label": "Time to harden", "note": "from the origin", "value": "11 min"}, {"label": "Written into memory", "note": "agents, in 2 entries stated as fact", "value": 2}, {"label": "Actions afterwards", "note": "computer-use sessions on the claim", "value": 4}]}</script>
+<script>
+(function () {
+  const data = JSON.parse(document.getElementById("trace-data").textContent);
+  const rows = data.rows.map(r => Object.assign({}, r, { t: Date.parse(r.time) }));
+  const plot = document.getElementById("plot");
+  const tooltip = document.getElementById("tooltip");
+  const detail = document.getElementById("detail");
+  const showWeak = document.getElementById("show-weak");
+  const NS = "http://www.w3.org/2000/svg";
+  const LABEL_W = 170, LANE_H = 34, TOP = 44, AXIS_H = 36, BREAK_PX = 28, RIGHT = 16;
+  const GAP_MS = 2 * 3600e3, MIN_SEG_MS = 10 * 60e3;
+  let selected = null;
+
+  const el = (name, attrs, parent) => {
+    const node = document.createElementNS(NS, name);
+    for (const [k, v] of Object.entries(attrs || {})) node.setAttribute(k, v);
+    if (parent) parent.appendChild(node);
+    return node;
+  };
+  const text = (parent, value, attrs) => { const t = el("text", attrs, parent); t.textContent = value; return t; };
+  const clock = t => new Date(t).toISOString().slice(11, 16);
+  const day = t => new Date(t).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+
+  // Long quiet stretches (nights, weekends) are cut out, so the axis is made of segments.
+  function segments(times) {
+    const segs = [];
+    for (const t of times) {
+      const last = segs[segs.length - 1];
+      if (last && t - last.end <= GAP_MS) last.end = t; else segs.push({ start: t, end: t });
+    }
+    return segs;
+  }
+
+  function draw() {
+    plot.querySelectorAll("svg").forEach(s => s.remove());
+    const visible = rows.filter(r => r.strong || showWeak.checked);
+    if (!visible.length) return;
+    const lanes = [...new Set(visible.map(r => r.agent))];
+    const segs = segments(visible.map(r => r.t).sort((a, b) => a - b));
+    const width = Math.max(plot.clientWidth, 560);
+    const plotW = width - LABEL_W - RIGHT - BREAK_PX * (segs.length - 1);
+    const weight = segs.reduce((s, g) => s + Math.max(g.end - g.start, MIN_SEG_MS), 0);
+    let x0 = LABEL_W;
+    for (const g of segs) {
+      g.x = x0; g.w = plotW * Math.max(g.end - g.start, MIN_SEG_MS) / weight;
+      g.pad = Math.min(10, g.w / 4); x0 += g.w + BREAK_PX;
+    }
+    const xOf = t => {
+      const g = segs.find(s => t >= s.start && t <= s.end) || segs[segs.length - 1];
+      const span = g.end - g.start;
+      return span ? g.x + g.pad + (t - g.start) / span * (g.w - 2 * g.pad) : g.x + g.w / 2;
+    };
+    const height = TOP + lanes.length * LANE_H + AXIS_H;
+    const svg = el("svg", { width, height, role: "img", "aria-label": "Appearances over time, one row per agent" });
+    plot.insertBefore(svg, tooltip);
+
+    lanes.forEach((agent, i) => {
+      const y = TOP + i * LANE_H + LANE_H / 2;
+      el("line", { x1: LABEL_W, x2: width - RIGHT, y1: y, y2: y, stroke: "var(--grid)", "stroke-width": 1 }, svg);
+      text(svg, agent.length > 24 ? agent.slice(0, 23) + "…" : agent, { x: LABEL_W - 10, y: y + 4, "text-anchor": "end", class: "lane-label" });
+    });
+
+    const axisY = TOP + lanes.length * LANE_H + 6;
+    for (const g of segs) {
+      el("line", { x1: g.x, x2: g.x + g.w, y1: axisY, y2: axisY, stroke: "var(--axis)", "stroke-width": 1 }, svg);
+      text(svg, day(g.start), { x: g.x, y: 16, class: "day" });
+      const span = g.end - g.start;
+      const steps = [5, 10, 15, 30, 60, 120, 240].map(m => m * 60e3);
+      const step = steps.find(s => span / s <= Math.max(1, Math.floor(g.w / 70))) || steps[steps.length - 1];
+      for (let t = Math.ceil(g.start / step) * step; t <= g.end; t += step) {
+        const x = xOf(t);
+        el("line", { x1: x, x2: x, y1: axisY, y2: axisY + 4, stroke: "var(--axis)" }, svg);
+        text(svg, clock(t), { x, y: axisY + 17, "text-anchor": "middle", class: "tick" });
+      }
+      if (span < step) text(svg, clock(g.start), { x: xOf(g.start), y: axisY + 17, "text-anchor": "middle", class: "tick" });
+    }
+    text(svg, "UTC", { x: LABEL_W - 10, y: axisY + 17, "text-anchor": "end", class: "tick" });
+
+    for (const r of visible.filter(r => r.role === "hardening" || r.role === "origin")) {
+      const x = xOf(r.t);
+      el("line", { x1: x, x2: x, y1: TOP - 6, y2: axisY, stroke: r.role === "hardening" ? "var(--ink)" : "var(--muted)",
+                   "stroke-width": r.role === "hardening" ? 1.5 : 1 }, svg);
+      const label = (r.role === "hardening" ? "Hardening point " : "Origin ") + clock(r.t);
+      text(svg, label, { x: x + 4, y: TOP - 8, class: "rule-label", "text-anchor": x > width - 160 ? "end" : "start",
+                         dx: x > width - 160 ? -8 : 0 });
+    }
+
+    for (const r of visible) {
+      const x = xOf(r.t), y = TOP + lanes.indexOf(r.agent) * LANE_H + LANE_H / 2;
+      const color = r.stance === "hedged" ? "var(--hedged)" : r.stance === "fact" ? "var(--fact)" : "var(--other)";
+      const paint = r.strong ? { fill: color, stroke: "var(--surface)", "stroke-width": 2, "paint-order": "stroke" }
+                             : { fill: "var(--surface)", stroke: color, "stroke-width": 2 };
+      if (r.channel === "memory") el("rect", Object.assign({ x: x - 5, y: y - 5, width: 10, height: 10, rx: 2 }, paint), svg);
+      else if (r.channel === "computer use") el("path", Object.assign({ d: `M${x} ${y - 6.5} L${x + 6.5} ${y} L${x} ${y + 6.5} L${x - 6.5} ${y} Z` }, paint), svg);
+      else el("circle", Object.assign({ cx: x, cy: y, r: 5.5 }, paint), svg);
+
+      const hit = el("circle", { cx: x, cy: y, r: 12, class: "hit", tabindex: 0, role: "button",
+        "aria-label": `${r.agent}, ${r.channel}, ${r.when}, ${r.stance_label}` }, svg);
+      const ring = el("circle", { cx: x, cy: y, r: 9, class: "ring" + (selected === r.id ? " selected" : ""), fill: "none" }, svg);
+      ring.dataset.id = r.id;
+      hit.addEventListener("pointermove", e => showTip(r, e));
+      hit.addEventListener("pointerleave", () => { tooltip.style.display = "none"; });
+      hit.addEventListener("click", () => select(r.id));
+      hit.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(r.id); } });
+      hit.addEventListener("focus", () => select(r.id, false));
+    }
+  }
+
+  function showTip(r, e) {
+    tooltip.replaceChildren();
+    const strong = document.createElement("strong"); strong.textContent = `${r.clock} · ${r.agent}`;
+    const line = document.createElement("span"); line.textContent = `${r.channel} · ${r.stance_label.toLowerCase()}${r.strong ? "" : " · weak match"}`;
+    tooltip.append(strong, line);
+    const box = plot.getBoundingClientRect();
+    tooltip.style.display = "block";
+    tooltip.style.left = Math.min(e.clientX - box.left + plot.scrollLeft + 14, plot.scrollWidth - 270) + "px";
+    tooltip.style.top = (e.clientY - box.top + 14) + "px";
+  }
+
+  function select(id, scroll = true) {
+    selected = id;
+    const r = rows.find(x => x.id === id);
+    if (!r) return;
+    document.querySelectorAll("#plot .ring").forEach(n => n.classList.toggle("selected", n.dataset.id === id));
+    document.querySelectorAll("tbody tr").forEach(n => n.classList.toggle("selected", n.dataset.id === id));
+
+    detail.replaceChildren();
+    const add = (tag, value, cls) => { const n = document.createElement(tag); if (value != null) n.textContent = value; if (cls) n.className = cls; detail.appendChild(n); return n; };
+    add("h3", r.agent);
+    add("p", `${r.channel} · ${r.when}`, "meta");
+    const chips = add("div", null, "chips");
+    const stance = document.createElement("span");
+    stance.className = "stance " + r.stance + (r.strong ? "" : " weak");
+    stance.textContent = r.stance_label;
+    chips.appendChild(stance);
+    const roleName = { hardening: "Hardening point", origin: "Origin", action: "Action after hardening" }[r.role];
+    const tier = r.core ? "core" : r.strong ? "strong" : "weak";
+    for (const label of [roleName, ...r.cues.map(h => `“${h}”`), tier + " match: " + r.methods.join(", ")]) {
+      if (!label) continue;
+      const c = document.createElement("span"); c.className = "chip"; c.textContent = label; chips.appendChild(c);
+    }
+    const ctx = add("div", null, "context");
+    const [a, b] = r.mark;
+    const m = document.createElement("mark"); m.textContent = r.context.slice(a, b);
+    ctx.append(document.createTextNode(r.context.slice(0, a)), m, document.createTextNode(r.context.slice(b)));
+    const link = add("a", "Open this moment in the village");
+    link.href = r.link; link.target = "_blank"; link.rel = "noopener";
+    if (scroll && window.innerWidth <= 900) detail.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  document.querySelectorAll("tbody tr").forEach(tr => {
+    tr.addEventListener("click", e => { if (e.target.tagName !== "A") select(tr.dataset.id); });
+    tr.addEventListener("keydown", e => { if (e.key === "Enter") select(tr.dataset.id); });
+  });
+  showWeak.addEventListener("change", draw);
+  new ResizeObserver(() => draw()).observe(plot);
+  draw();
+  const first = rows.find(r => r.role === "hardening") || rows.find(r => r.role === "origin");
+  if (first) select(first.id, false);
+})();
+</script>
+</body>
+</html>
