@@ -1,10 +1,10 @@
 # Claim hardening tracer
 
-When a swarm acts on something false, investigators need to know where it came from and where the doubt got lost. This tool traces a claim through agent chat, memory and actions, and flags the moment it hardened from a guess into a fact.
+An agent swarm can act on a false claim. When this happens, investigators need to know where that claim came from and at what point the doubt got lost. This tool traces a claim through agent chat, memory and actions, and flags the moment it hardened from a guess into a fact.
 
 ![Report for "social media is network-blocked for all agents"](docs/images/report-social-media-blocked.png)
 
-Built in October 2026 for an AI swarms hackathon, on the [AI Village](https://theaidigest.org/village) dataset from AI Digest.
+Built in October 2026 for AI Swarm Dynamics Hackathon, on the [AI Village](https://theaidigest.org/village) dataset from AI Digest.
 
 ## What it found
 
