@@ -21,6 +21,7 @@ All three traces below come from one week of the village, the goal "Adopt a park
 3. **Trace** (`tracer/match.py`): finds every sentence that matches the claim by keyword (rare words weigh more), fuzzy near-copy, or embedding similarity. A second embedding pass adds the agents' own wording to the claim, so "went through" is found for "submitted". Matches are tiered: **core** (a close restatement), **strong**, or **weak** (same-topic, kept in the lineage only). If the claim has a number, a sentence without it can't be core ("~26 minutes left" isn't "5 minutes left").
 4. **Harden** (`tracer/harden.py`): marks each match **hedged**, **stated as fact**, **disputed** or a **question**, using two editable word lists (`tracer/hedges.txt`, `tracer/disputes.txt`). The **origin** is the first close restatement. The **hardening point** is the first close restatement stated as fact within 30 minutes of a hedged one, in chat or memory. The **actions** are the computer-use sessions on the claim after it.
 5. **Report** (`tracer/report.py`, `templates/report.html`): one self-contained HTML file with the finding, summary numbers, key moments, a timeline with one row per agent, the matched sentence in context, and a link back to that moment in the village.
+6. **Judge** (optional, `tracer/judge.py`, `kaggle/judge.py`): an open-weight language model, Qwen3-8B on a free Kaggle GPU, gives a second opinion on every match. When it says a sentence doesn't state the claim, the match is demoted to weak, so a neighbouring claim can't become the origin or hardening point. When it says the sentence denies the claim, the match is marked disputed. See [kaggle/README.md](kaggle/README.md).
 
 ## Try it on the demo
 
@@ -49,6 +50,7 @@ On Windows, if `import torch` fails with an error about `shm.dll`, install the l
 4. `python trace.py index` embeds the records. For the Adopt-a-park week that's 263,000 sentences, about 1 hour on a 2-core laptop, or minutes on a GPU. It resumes if stopped.
 5. `python trace.py trace "social media is network-blocked for all agents" --day 314` traces a claim within one village day and writes its report. Add `--compact` for a smaller report to share.
 6. `python trace.py check test_cases.json fresh_cases.json fresh_round2.json` scores the tracer against the hand-labelled cases.
+7. Optionally, `python trace.py export test_cases.json fresh_cases.json fresh_round2.json` writes the matches for the language-model judge. Run it on Kaggle ([kaggle/README.md](kaggle/README.md)), then add `--labels data/judge/labels.jsonl` to `trace` or `check`.
 
 ## How well it works
 
@@ -62,10 +64,14 @@ Measured against claims found by reading the chat by hand. Each answer key lists
 | Fresh claims, round 1 (4 claims, days 315, 316, 318), first run | 0 of 4 hardening points right |
 | Fresh claims, round 2 (3 new claims, after fixing round 1's causes), first run | 1 of 3 hardening points right |
 | Lineage recall on the 7 fresh claims | 42 of 45 labelled records found (93%) |
+| With the language-model judge, on the 7 fresh claims (first run) | 3 of 7 hardening points right, the same 3 the rules alone get now (round 1 was used to fix the rules after its first run) |
+| Stance labels with the judge, on the 153 review sentences it kept as the claim | 142 right; the rules alone get 141 of them |
 
 **In short, it reliably finds a claim's lineage, but picking the exact hardening point automatically is unreliable on new claims.** It works on claims with a distinctive verb or phrase ("network-blocked", "cache delay"). It fails when a neighbouring claim reads almost the same, when agents paraphrase the claim, or when a hedge word isn't on the list. The report still shows the move from doubt to fact for a person to judge.
 
 The origin rule (first close restatement) was chosen after comparing rules against the labelled origins of ten real cases: a median of 1 minute off, against 61 minutes for the earliest strong match.
+
+**The judge didn't improve the hardening point.** It was designed on the demo, the tuning cases and the 192 review sentences, then run once on the fresh claims, and it changed none of their hardening points. Asked for a one-letter answer with no reasoning, Qwen3-8B called most matches it wasn't sure about "stated as fact" (2,879 of 5,678) and only 32 "hedged", so it can't replace the hedge list. Its "denies the claim" answers were reliable (10 of 11 right on the review sentences), and about 30 of the 39 review sentences it set aside were real neighbouring claims or outcomes ("GPT-5.2 posted the table" is not "a glitch is hiding the table"). But it made the rules' word-sense error ("Great work on… the Love Dolores outreach" read as "the outreach is working"). On the "Caleb C was a newsletter conversion" claim it was right where the hedge list wasn't: it read "possible first newsletter conversion" as doubt, but "possible" isn't on the list. That wasn't changed afterwards, to keep the fresh test honest.
 
 ## Limitations
 
@@ -88,15 +94,16 @@ The origin rule (first close restatement) was chosen after comparing rules again
 | `loaders/ai_village.py` | Turns one goal period into records |
 | `tracer/` | Index, matching, hardening, report and evaluation code, plus the editable word lists |
 | `templates/report.html` | The report template (all CSS and JavaScript inline) |
+| `kaggle/` | The language-model judge's GPU script, and how to run it on a free Kaggle notebook |
 | `demo_data/` | The demo dataset, its generator and its answer key |
 | `test_cases.json`, `fresh_cases.json`, `fresh_round2.json` | Hand-labelled real cases: tuning, then two fresh rounds |
 | `reports/` | Example reports: the demo, plus two compact real traces |
 | `docs/images/` | Report screenshots |
-| `data/` | Downloaded data, records, index and review sheets. Ignored by git |
+| `data/` | Downloaded data, records, index, review sheets and the judge's files. Ignored by git |
 
 ## What's next
 
-- A language-model judge for the core decisions: does this sentence state the same claim, and is it hedged, asserted or disputed? That addresses most of the failures above.
+- A stronger judge: let the model reason before it answers (Qwen3's thinking mode) on the few dozen matches near each possible hardening point, or use a larger model. Then test it on new claims, since the seven fresh ones have now been seen.
 - A second loader, to show the tracer isn't tied to AI Village.
 - Linking each memory update to the computer-use session it came from, and adding agents' own session summaries as a channel.
 

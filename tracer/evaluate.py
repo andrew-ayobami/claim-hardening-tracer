@@ -21,6 +21,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from tracer.harden import SCOPE, harden, load_hedges
+from tracer.judge import apply_labels
 from tracer.match import Corpus, day_window, find_matches, origin, parse_time
 
 ROLES = ("appearances", "evidence", "counter", "hedged", "stated_as_fact", "action", "correction", "confirmation")
@@ -37,8 +38,11 @@ def labelled(case):
     return ids
 
 
-def check(key_path, root, scope=SCOPE, quiet=False, corpus=None):
-    """Print how each case in the key does. Returns (cases passed, cases)."""
+def check(key_path, root, scope=SCOPE, quiet=False, corpus=None, labels=None):
+    """Print how each case in the key does. Returns (cases passed, cases).
+
+    labels, from tracer.judge.load_labels, replace the rules' calls where they exist.
+    """
     key = json.loads(Path(key_path).read_text(encoding="utf-8"))
     corpus = corpus or Corpus(root / key["records"])
     complete = key.get("complete", False)
@@ -52,6 +56,7 @@ def check(key_path, root, scope=SCOPE, quiet=False, corpus=None):
     for case in key["cases"]:
         since, until = day_window(corpus, case["day"]) if "day" in case else (None, None)
         matches = find_matches(case["claim"], corpus, since, until)
+        judged = apply_labels(case["claim"], matches, labels) if labels else 0
         analysis = harden(matches, case["claim"], hedges, scope)
         found = {m["record"]["id"][:8]: m for m in matches}
         want = labelled(case)
@@ -60,7 +65,8 @@ def check(key_path, root, scope=SCOPE, quiet=False, corpus=None):
 
         say(f"\n{case['name']}: \"{case['claim']}\"" + (f" (day {case['day']})" if "day" in case else ""))
         say(f"  found {sum(i in found for i in want)} of {len(want)} labelled records; {len(matches)} matches "
-            f"({sum(m['core'] for m in matches)} core, {sum(m['strong'] for m in matches)} strong)")
+            f"({sum(m['core'] for m in matches)} core, {sum(m['strong'] for m in matches)} strong)"
+            + (f", {judged} labelled by the judge" if labels else ""))
         for i in want:
             if i not in found:
                 strict.append(f"MISSED {i} ({want[i]}): {one_line(by_id[i]['text'])}")

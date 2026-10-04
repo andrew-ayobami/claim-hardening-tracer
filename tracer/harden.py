@@ -1,6 +1,8 @@
 """Hardening step: mark each match's stance, and find where the doubt was lost.
 
 Each match gets one stance, checked in this order:
+- disputed, if the language-model judge says the sentence denies the claim
+  (only when its labels are given; see tracer/judge.py)
 - question: the matched sentence asks something ("isn't there an hour left?")
 - disputed: the matched sentence denies or corrects the claim, using a phrase
   from disputes.txt ("does not exist", "mistakenly"), unless that phrase is
@@ -89,7 +91,9 @@ def harden(matches, claim="", hedges=None, scope=SCOPE):
         sentence = m["excerpt"]
         m["hedges"] = found_phrases(hedge_pattern, hedge_names, context(m["record"]["text"], m["span"], scope))
         m["disputes"] = found_phrases(dispute_pattern, dispute_names, sentence, in_claim)
-        if QUESTION.search(sentence):
+        if m.get("judge") == "disputed":
+            m["stance"] = "disputed"
+        elif QUESTION.search(sentence):
             m["stance"] = "question"
         elif m["disputes"]:
             m["stance"] = "disputed"
